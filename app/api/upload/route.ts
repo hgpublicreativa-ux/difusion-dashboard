@@ -44,19 +44,38 @@ export async function POST(request: NextRequest) {
     ) as string[];
 
     // Create folder structure in Drive
-    const { folderUrl, folderId } = await createUserFolderStructure(
-      userName,
-      date
-    );
+    const { folderUrl, whatsappFolderId, facebookFolderId } =
+      await createUserFolderStructure(userName, date);
 
     // Get all files from the form
     const files = formData.getAll("files") as File[];
+    const whatsappFiles = formData.getAll("whatsappFiles") as File[];
+    const facebookFiles = formData.getAll("facebookFiles") as File[];
 
-    // Upload files
+    // Upload files to respective folders
     let uploadedCount = 0;
-    for (const file of files) {
+
+    // Upload WhatsApp files
+    for (const file of whatsappFiles) {
       if (file.size > 0) {
-        await uploadFileToFolder(folderId, file);
+        await uploadFileToFolder(whatsappFolderId, file);
+        uploadedCount++;
+      }
+    }
+
+    // Upload Facebook files
+    for (const file of facebookFiles) {
+      if (file.size > 0) {
+        await uploadFileToFolder(facebookFolderId, file);
+        uploadedCount++;
+      }
+    }
+
+    // Upload generic files (for backward compatibility)
+    for (const file of files) {
+      if (file.size > 0 && !whatsappFiles.includes(file) && !facebookFiles.includes(file)) {
+        // Determine folder based on file name or upload to whatsapp by default
+        await uploadFileToFolder(whatsappFolderId, file);
         uploadedCount++;
       }
     }

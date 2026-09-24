@@ -19,7 +19,8 @@ export default function UserForm({ userName, userId }: UserFormProps) {
     fbCommentsMade: "",
     fbGroupsShared: "",
     fbNewGroupsJoined: "",
-    files: [] as File[],
+    whatsappFiles: [] as File[],
+    facebookFiles: [] as File[],
   });
 
   const [error, setError] = useState("");
@@ -33,7 +34,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
       if (files) {
         setFormData((prev) => ({
           ...prev,
-          files: Array.from(files),
+          [name]: Array.from(files),
         }));
       }
     } else {
@@ -133,9 +134,14 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         }
       });
 
-      // Add files
-      formData.files.forEach((file) => {
-        form.append("files", file);
+      // Add WhatsApp files
+      formData.whatsappFiles.forEach((file) => {
+        form.append("whatsappFiles", file);
+      });
+
+      // Add Facebook files
+      formData.facebookFiles.forEach((file) => {
+        form.append("facebookFiles", file);
       });
 
       const response = await fetch("/api/upload", {
@@ -164,7 +170,8 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         fbCommentsMade: "",
         fbGroupsShared: "",
         fbNewGroupsJoined: "",
-        files: [],
+        whatsappFiles: [],
+        facebookFiles: [],
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -378,22 +385,42 @@ export default function UserForm({ userName, userId }: UserFormProps) {
           </div>
         </div>
 
-        {/* File Upload */}
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-dashed border-purple-300 hover:border-purple-500 transition-colors">
-          <label className="block text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
-            <span>📸</span> Evidencias (Capturas/Videos)
+        {/* File Upload - WhatsApp */}
+        <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-6 border-2 border-dashed border-green-300 hover:border-green-500 transition-colors">
+          <label className="block text-sm font-semibold text-green-900 mb-3 flex items-center gap-2">
+            <span>💬</span> Evidencias WhatsApp (Capturas/Videos)
           </label>
           <input
             type="file"
-            name="files"
+            name="whatsappFiles"
             multiple
             onChange={handleInputChange}
             accept="image/*,video/*"
             className="w-full cursor-pointer"
           />
-          {formData.files.length > 0 && (
-            <div className="mt-3 p-3 bg-purple-100 rounded-lg text-sm text-purple-900 font-medium">
-              ✓ {formData.files.length} archivo(s) seleccionado(s)
+          {formData.whatsappFiles.length > 0 && (
+            <div className="mt-3 p-3 bg-green-100 rounded-lg text-sm text-green-900 font-medium">
+              ✓ {formData.whatsappFiles.length} archivo(s) de WhatsApp seleccionado(s)
+            </div>
+          )}
+        </div>
+
+        {/* File Upload - Facebook */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-dashed border-blue-300 hover:border-blue-500 transition-colors">
+          <label className="block text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+            <span>👍</span> Evidencias Facebook (Capturas/Videos)
+          </label>
+          <input
+            type="file"
+            name="facebookFiles"
+            multiple
+            onChange={handleInputChange}
+            accept="image/*,video/*"
+            className="w-full cursor-pointer"
+          />
+          {formData.facebookFiles.length > 0 && (
+            <div className="mt-3 p-3 bg-blue-100 rounded-lg text-sm text-blue-900 font-medium">
+              ✓ {formData.facebookFiles.length} archivo(s) de Facebook seleccionado(s)
             </div>
           )}
         </div>

@@ -85,7 +85,11 @@ export async function getFolderLink(folderId: string): Promise<string> {
 export async function createUserFolderStructure(
   userName: string,
   date: string
-): Promise<{ folderUrl: string; folderId: string }> {
+): Promise<{
+  folderUrl: string;
+  whatsappFolderId: string;
+  facebookFolderId: string;
+}> {
   try {
     const mainFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
     if (!mainFolderId) {
@@ -98,9 +102,15 @@ export async function createUserFolderStructure(
     // Create or get date folder
     const dateFolderId = await findOrCreateFolder(userFolderId, date);
 
+    // Create or get WhatsApp evidence folder
+    const whatsappFolderId = await findOrCreateFolder(dateFolderId, "EVIDENCIA_WHATSAPP");
+
+    // Create or get Facebook evidence folder
+    const facebookFolderId = await findOrCreateFolder(dateFolderId, "EVIDENCIA_FACEBOOK");
+
     const folderUrl = await getFolderLink(dateFolderId);
 
-    return { folderUrl, folderId: dateFolderId };
+    return { folderUrl, whatsappFolderId, facebookFolderId };
   } catch (error) {
     console.error("Error creating user folder structure:", error);
     throw error;
