@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+
+  activityLogs ActivityLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model ActivityLog {
+  id                      String   @id @default(cuid())
+
+  userId                  String
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date                    DateTime @default(now())
+
+  // Campaign info
+  campaignName            String
+
+  // WhatsApp metrics
+  whatsappGroupsReached   Int      @default(0)
+  whatsappMessagesPerGroup Int     @default(0)
+
+  // Facebook metrics
+  fbOwnPostsCreated       Int      @default(0)
+  fbOwnPostsLinks         String[] @default([])
+  fbCommentsMade          Int      @default(0)
+  fbGroupsShared          Int      @default(0)
+  fbNewGroupsJoined       Int      @default(0)
+
+  // Drive folder
+  driveEvidenceFolderUrl  String?
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@index([campaignName])
+}

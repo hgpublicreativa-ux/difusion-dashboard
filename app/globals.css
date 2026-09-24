@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-gradient-to-br from-slate-50 to-slate-100 text-gray-900 font-sans;
+  font-family: 'Inter', sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  @apply border-gray-200;
+}
+
+/* Inputs y Textareas */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="file"],
+textarea,
+select {
+  @apply px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900;
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:border-transparent;
+  @apply transition-all duration-200;
+  @apply placeholder-gray-400;
+}
+
+/* Buttons */
+button {
+  @apply transition-all duration-200;
+}
+
+button:active {
+  @apply scale-95;
+}
+
+/* Tables */
+table {
+  @apply w-full;
+}
+
+thead {
+  @apply bg-gradient-to-r from-slate-100 to-slate-50;
+}
+
+tbody tr {
+  @apply border-b border-gray-200 hover:bg-blue-50 transition-colors duration-150;
+}
+
+tbody tr:last-child {
+  @apply border-b-0;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
