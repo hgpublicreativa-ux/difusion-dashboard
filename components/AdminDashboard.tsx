@@ -5,6 +5,8 @@ import {
   getAggregatedByUser,
   getAggregatedByCampaign,
 } from "@/lib/actions";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface AggregatedUser {
   user: {
@@ -97,6 +99,144 @@ export default function AdminDashboard() {
     return new Intl.NumberFormat("es-ES").format(num);
   };
 
+  const formatDateEs = (isoDate: string): string => {
+    const [year, month, day] = isoDate.split("-");
+    return `${day}/${month}/${year}`;
+  };
+
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+
+    const rangeLabel =
+      startDate && endDate
+        ? `${formatDateEs(startDate)} - ${formatDateEs(endDate)}`
+        : startDate
+        ? `Desde ${formatDateEs(startDate)}`
+        : endDate
+        ? `Hasta ${formatDateEs(endDate)}`
+        : "Histórico completo";
+
+    doc.setFontSize(18);
+    doc.setTextColor(37, 99, 235);
+    doc.text("Difusión Dashboard - Reporte", 14, 18);
+
+    doc.setFontSize(11);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Rango de fechas: ${rangeLabel}`, 14, 26);
+    doc.text(
+      `Generado: ${new Date().toLocaleDateString("es-ES")} ${new Date().toLocaleTimeString("es-ES")}`,
+      14,
+      32
+    );
+
+    const totalGroups = userAggregates.reduce(
+      (sum, u) => sum + u.totals.whatsappGroupsReached,
+      0
+    );
+    const totalMessages = userAggregates.reduce(
+      (sum, u) =>
+        sum +
+        calculateTotalMessages(
+          u.totals.whatsappGroupsReached,
+          u.totals.whatsappMessagesPerGroup
+        ),
+      0
+    );
+
+    doc.setFontSize(11);
+    doc.setTextColor(30, 30, 30);
+    doc.text(
+      `Total Grupos Alcanzados: ${formatNumber(totalGroups)}   |   Total Mensajes Enviados: ${formatNumber(totalMessages)}`,
+      14,
+      40
+    );
+
+    autoTable(doc, {
+      startY: 46,
+      head: [
+        [
+          "Usuario",
+          "WA Grupos",
+          "WA Msj/Grupo",
+          "WA Total Msj",
+          "FB Posts",
+          "FB Comentarios",
+          "FB Grupos Comp.",
+          "FB Grupos Nuevos",
+        ],
+      ],
+      body: userAggregates.map((u) => [
+        u.user.name,
+        formatNumber(u.totals.whatsappGroupsReached),
+        formatNumber(u.totals.whatsappMessagesPerGroup),
+        formatNumber(
+          calculateTotalMessages(
+            u.totals.whatsappGroupsReached,
+            u.totals.whatsappMessagesPerGroup
+          )
+        ),
+        formatNumber(u.totals.fbOwnPostsCreated),
+        formatNumber(u.totals.fbCommentsMade),
+        formatNumber(u.totals.fbGroupsShared),
+        formatNumber(u.totals.fbNewGroupsJoined),
+      ]),
+      headStyles: { fillColor: [37, 99, 235] },
+      styles: { fontSize: 8 },
+      margin: { left: 14, right: 14 },
+    });
+
+    const afterUserTableY =
+      (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable
+        ?.finalY || 46;
+
+    doc.setFontSize(13);
+    doc.setTextColor(30, 30, 30);
+    doc.text("Totales por Campaña", 14, afterUserTableY + 12);
+
+    autoTable(doc, {
+      startY: afterUserTableY + 16,
+      head: [
+        [
+          "Campaña",
+          "Entradas",
+          "WA Grupos",
+          "WA Msj/Grupo",
+          "WA Total Msj",
+          "FB Posts",
+          "FB Comentarios",
+          "FB Grupos Comp.",
+          "FB Grupos Nuevos",
+        ],
+      ],
+      body: campaignAggregates.map((c) => [
+        c.campaignName,
+        String(c.entriesCount),
+        formatNumber(c.totals.whatsappGroupsReached),
+        formatNumber(c.totals.whatsappMessagesPerGroup),
+        formatNumber(
+          calculateTotalMessages(
+            c.totals.whatsappGroupsReached,
+            c.totals.whatsappMessagesPerGroup
+          )
+        ),
+        formatNumber(c.totals.fbOwnPostsCreated),
+        formatNumber(c.totals.fbCommentsMade),
+        formatNumber(c.totals.fbGroupsShared),
+        formatNumber(c.totals.fbNewGroupsJoined),
+      ]),
+      headStyles: { fillColor: [147, 51, 234] },
+      styles: { fontSize: 8 },
+      margin: { left: 14, right: 14 },
+    });
+
+    const fileDateLabel =
+      startDate || endDate
+        ? `${startDate || "inicio"}_a_${endDate || "hoy"}`
+        : "historico";
+
+    doc.save(`difusion-dashboard-${fileDateLabel}.pdf`);
+  };
+
   return (
     <div className="space-y-8 p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
       <div className="flex items-center gap-3 mb-8">
@@ -123,7 +263,7 @@ export default function AdminDashboard() {
         <h2 className="text-2xl font-bold text-gray-900 mb-5 flex items-center gap-2">
           <span>📅</span> Filtrar por Rango de Fechas
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
             <label className="block text-sm font-semibold text-gray-700">
               Fecha de Inicio
@@ -153,6 +293,16 @@ export default function AdminDashboard() {
               className="w-full px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 transition-all duration-200 transform hover:scale-105 disabled:scale-100 shadow-md hover:shadow-lg"
             >
               {isLoading ? "⏳ Cargando..." : "🔍 Filtrar"}
+            </button>
+          </div>
+
+          <div className="flex items-end">
+            <button
+              onClick={handleDownloadPDF}
+              disabled={isLoading || userAggregates.length === 0}
+              className="w-full px-6 py-2.5 bg-gradient-to-r from-red-500 to-rose-600 text-white font-semibold rounded-lg hover:from-red-600 hover:to-rose-700 disabled:from-gray-400 disabled:to-gray-500 transition-all duration-200 transform hover:scale-105 disabled:scale-100 shadow-md hover:shadow-lg"
+            >
+              📄 Descargar PDF
             </button>
           </div>
         </div>
