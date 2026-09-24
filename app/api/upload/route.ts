@@ -80,12 +80,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Save activity log to database
-    const activityLog = await prisma.activityLog.create({
-      data: {
+    // Normalize to midnight so multiple submits on the same calendar day
+    // always match the same row (date input is already YYYY-MM-DD).
+    const normalizedDate = new Date(`${date}T00:00:00.000Z`);
+
+    // Upsert: if this user already reported something today, accumulate
+    // into that row instead of creating a duplicate for the same day.
+    const activityLog = await prisma.activityLog.upsert({
+      where: {
+        userId_date: {
+          userId,
+          date: normalizedDate,
+        },
+      },
+      update: {
+        whatsappGroupsReached: { increment: whatsappGroupsReached },
+        whatsappMessagesPerGroup: { increment: whatsappMessagesPerGroup },
+        fbOwnPostsCreated: { increment: fbOwnPostsCreated },
+        fbOwnPostsLinks: { push: fbPostLinks },
+        fbCommentsMade: { increment: fbCommentsMade },
+        fbGroupsShared: { increment: fbGroupsShared },
+        fbNewGroupsJoined: { increment: fbNewGroupsJoined },
+        driveEvidenceFolderUrl: folderUrl,
+      },
+      create: {
         userId,
         campaignName,
-        date: new Date(date),
+        date: normalizedDate,
         whatsappGroupsReached,
         whatsappMessagesPerGroup,
         fbOwnPostsCreated,

@@ -198,7 +198,10 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             Reporte Diario
           </h2>
         </div>
-        <p className="text-gray-600 mb-8">Hola, <span className="font-semibold text-gray-900">{userName}</span>. Registra tu actividad del día.</p>
+        <p className="text-gray-600 mb-2">Hola, <span className="font-semibold text-gray-900">{userName}</span>. Registra tu actividad del día.</p>
+        <p className="text-xs text-gray-400 mb-8">
+          💡 Si ya enviaste un reporte hoy, estos valores se sumarán al reporte de hoy (no se reemplazan).
+        </p>
 
         {error && (
         <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-800 rounded-lg flex items-start gap-3">

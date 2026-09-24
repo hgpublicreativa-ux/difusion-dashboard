@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import {
   getAggregatedByUser,
   getFacebookLinksByDateRange,
+  getActivityLogsByDateRange,
 } from "@/lib/actions";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -35,9 +36,23 @@ interface FacebookLink {
   link: string;
 }
 
+interface DailyLog {
+  id: string;
+  date: Date;
+  whatsappGroupsReached: number;
+  whatsappMessagesPerGroup: number;
+  fbOwnPostsCreated: number;
+  fbCommentsMade: number;
+  fbGroupsShared: number;
+  fbNewGroupsJoined: number;
+  driveEvidenceFolderUrl: string | null;
+  user: { id: string; name: string };
+}
+
 export default function AdminDashboard() {
   const [userAggregates, setUserAggregates] = useState<AggregatedUser[]>([]);
   const [facebookLinks, setFacebookLinks] = useState<FacebookLink[]>([]);
+  const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showLinksModal, setShowLinksModal] = useState(false);
@@ -58,6 +73,10 @@ export default function AdminDashboard() {
         startDateObj,
         endDateObj
       );
+      const logsResult = await getActivityLogsByDateRange(
+        startDateObj,
+        endDateObj
+      );
 
       if (userResult.success) {
         setUserAggregates(userResult.data as AggregatedUser[]);
@@ -69,6 +88,12 @@ export default function AdminDashboard() {
         setFacebookLinks(linksResult.data as FacebookLink[]);
       } else {
         setError(linksResult.error || "Failed to load Facebook links");
+      }
+
+      if (logsResult.success) {
+        setDailyLogs(logsResult.data as unknown as DailyLog[]);
+      } else {
+        setError(logsResult.error || "Failed to load daily logs");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -584,6 +609,107 @@ export default function AdminDashboard() {
                 <tr>
                   <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                     No data available for the selected date range
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Table: Daily History (individual reports, one row per user per day) */}
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+        <div className="px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
+          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <span>📆</span> Historial Diario
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Un registro por usuario por día. Si alguien reporta varias veces el mismo día, se acumula en la misma fila.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100 border-b border-gray-200 sticky top-0">
+              <tr>
+                <th className="px-6 py-3 text-left font-semibold text-gray-700">
+                  Fecha
+                </th>
+                <th className="px-6 py-3 text-left font-semibold text-gray-700">
+                  Usuario
+                </th>
+                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                  WA Grupos
+                </th>
+                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                  WA Msj/Grupo
+                </th>
+                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                  FB Posts
+                </th>
+                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                  FB Comments
+                </th>
+                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                  FB Grupos Comp.
+                </th>
+                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                  FB Grupos Nuevos
+                </th>
+                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                  Evidencias
+                </th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-gray-200">
+              {dailyLogs.length > 0 ? (
+                dailyLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-3 text-gray-700 whitespace-nowrap">
+                      {new Date(log.date).toLocaleDateString("es-ES")}
+                    </td>
+                    <td className="px-6 py-3 font-medium text-gray-900">
+                      {log.user.name}
+                    </td>
+                    <td className="px-6 py-3 text-center text-gray-700">
+                      {formatNumber(log.whatsappGroupsReached)}
+                    </td>
+                    <td className="px-6 py-3 text-center text-gray-700">
+                      {formatNumber(log.whatsappMessagesPerGroup)}
+                    </td>
+                    <td className="px-6 py-3 text-center text-gray-700">
+                      {formatNumber(log.fbOwnPostsCreated)}
+                    </td>
+                    <td className="px-6 py-3 text-center text-gray-700">
+                      {formatNumber(log.fbCommentsMade)}
+                    </td>
+                    <td className="px-6 py-3 text-center text-gray-700">
+                      {formatNumber(log.fbGroupsShared)}
+                    </td>
+                    <td className="px-6 py-3 text-center text-gray-700">
+                      {formatNumber(log.fbNewGroupsJoined)}
+                    </td>
+                    <td className="px-6 py-3 text-center">
+                      {log.driveEvidenceFolderUrl ? (
+                        <a
+                          href={log.driveEvidenceFolderUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded hover:bg-blue-600"
+                        >
+                          📁 Ver
+                        </a>
+                      ) : (
+                        <span className="text-gray-400 text-xs">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                    No hay registros para el rango de fechas seleccionado
                   </td>
                 </tr>
               )}

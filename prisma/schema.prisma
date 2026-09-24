@@ -67,6 +67,7 @@ model ActivityLog {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
+  @@unique([userId, date])
   @@index([userId])
   @@index([date])
   @@index([campaignName])
