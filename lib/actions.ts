@@ -79,6 +79,28 @@ export async function getAggregatedByUser(
       },
     });
 
+    // Also aggregate just today's entries, regardless of the date filter
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const todayAggregated = await prisma.activityLog.groupBy({
+      by: ["userId"],
+      where: {
+        date: { gte: todayStart, lte: todayEnd },
+      },
+      _sum: {
+        whatsappGroupsReached: true,
+        whatsappMessagesPerGroup: true,
+        fbOwnPostsCreated: true,
+        fbCommentsMade: true,
+        fbGroupsShared: true,
+        fbNewGroupsJoined: true,
+      },
+    });
+    const todayMap = new Map(todayAggregated.map((a) => [a.userId, a]));
+
     // Get user details
     const userIds = aggregated.map((a) => a.userId);
     const users = await prisma.user.findMany({
@@ -87,17 +109,29 @@ export async function getAggregatedByUser(
 
     const userMap = new Map(users.map((u) => [u.id, u]));
 
-    const result = aggregated.map((agg) => ({
-      user: userMap.get(agg.userId)!,
-      totals: {
-        whatsappGroupsReached: agg._sum.whatsappGroupsReached || 0,
-        whatsappMessagesPerGroup: agg._sum.whatsappMessagesPerGroup || 0,
-        fbOwnPostsCreated: agg._sum.fbOwnPostsCreated || 0,
-        fbCommentsMade: agg._sum.fbCommentsMade || 0,
-        fbGroupsShared: agg._sum.fbGroupsShared || 0,
-        fbNewGroupsJoined: agg._sum.fbNewGroupsJoined || 0,
-      },
-    }));
+    const result = aggregated.map((agg) => {
+      const today = todayMap.get(agg.userId);
+
+      return {
+        user: userMap.get(agg.userId)!,
+        totals: {
+          whatsappGroupsReached: agg._sum.whatsappGroupsReached || 0,
+          whatsappMessagesPerGroup: agg._sum.whatsappMessagesPerGroup || 0,
+          fbOwnPostsCreated: agg._sum.fbOwnPostsCreated || 0,
+          fbCommentsMade: agg._sum.fbCommentsMade || 0,
+          fbGroupsShared: agg._sum.fbGroupsShared || 0,
+          fbNewGroupsJoined: agg._sum.fbNewGroupsJoined || 0,
+        },
+        todayTotals: {
+          whatsappGroupsReached: today?._sum.whatsappGroupsReached || 0,
+          whatsappMessagesPerGroup: today?._sum.whatsappMessagesPerGroup || 0,
+          fbOwnPostsCreated: today?._sum.fbOwnPostsCreated || 0,
+          fbCommentsMade: today?._sum.fbCommentsMade || 0,
+          fbGroupsShared: today?._sum.fbGroupsShared || 0,
+          fbNewGroupsJoined: today?._sum.fbNewGroupsJoined || 0,
+        },
+      };
+    });
 
     return { success: true, data: result };
   } catch (error) {

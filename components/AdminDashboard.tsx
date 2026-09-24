@@ -8,6 +8,15 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+interface UserTotals {
+  whatsappGroupsReached: number;
+  whatsappMessagesPerGroup: number;
+  fbOwnPostsCreated: number;
+  fbCommentsMade: number;
+  fbGroupsShared: number;
+  fbNewGroupsJoined: number;
+}
+
 interface AggregatedUser {
   user: {
     id: string;
@@ -15,14 +24,8 @@ interface AggregatedUser {
     email: string;
     driveFolderUrl: string | null;
   };
-  totals: {
-    whatsappGroupsReached: number;
-    whatsappMessagesPerGroup: number;
-    fbOwnPostsCreated: number;
-    fbCommentsMade: number;
-    fbGroupsShared: number;
-    fbNewGroupsJoined: number;
-  };
+  totals: UserTotals;
+  todayTotals: UserTotals;
 }
 
 interface FacebookLink {
@@ -37,6 +40,7 @@ export default function AdminDashboard() {
   const [facebookLinks, setFacebookLinks] = useState<FacebookLink[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showLinksModal, setShowLinksModal] = useState(false);
 
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -96,6 +100,25 @@ export default function AdminDashboard() {
     const [year, month, day] = isoDate.split("-");
     return `${day}/${month}/${year}`;
   };
+
+  const MetricCell = ({
+    today,
+    total,
+    highlight,
+  }: {
+    today: number;
+    total: number;
+    highlight?: boolean;
+  }) => (
+    <td className="px-6 py-4 text-center">
+      <p
+        className={`font-semibold ${highlight ? "text-green-600" : "text-gray-800"}`}
+      >
+        {formatNumber(total)}
+      </p>
+      <p className="text-xs text-gray-400 mt-0.5">Hoy: {formatNumber(today)}</p>
+    </td>
+  );
 
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
@@ -181,18 +204,23 @@ export default function AdminDashboard() {
       ],
       body: userAggregates.map((u) => [
         u.user.name,
-        formatNumber(u.totals.whatsappGroupsReached),
-        formatNumber(u.totals.whatsappMessagesPerGroup),
-        formatNumber(
+        `${formatNumber(u.totals.whatsappGroupsReached)} (hoy: ${formatNumber(u.todayTotals.whatsappGroupsReached)})`,
+        `${formatNumber(u.totals.whatsappMessagesPerGroup)} (hoy: ${formatNumber(u.todayTotals.whatsappMessagesPerGroup)})`,
+        `${formatNumber(
           calculateTotalMessages(
             u.totals.whatsappGroupsReached,
             u.totals.whatsappMessagesPerGroup
           )
-        ),
-        formatNumber(u.totals.fbOwnPostsCreated),
-        formatNumber(u.totals.fbCommentsMade),
-        formatNumber(u.totals.fbGroupsShared),
-        formatNumber(u.totals.fbNewGroupsJoined),
+        )} (hoy: ${formatNumber(
+          calculateTotalMessages(
+            u.todayTotals.whatsappGroupsReached,
+            u.todayTotals.whatsappMessagesPerGroup
+          )
+        )})`,
+        `${formatNumber(u.totals.fbOwnPostsCreated)} (hoy: ${formatNumber(u.todayTotals.fbOwnPostsCreated)})`,
+        `${formatNumber(u.totals.fbCommentsMade)} (hoy: ${formatNumber(u.todayTotals.fbCommentsMade)})`,
+        `${formatNumber(u.totals.fbGroupsShared)} (hoy: ${formatNumber(u.todayTotals.fbGroupsShared)})`,
+        `${formatNumber(u.totals.fbNewGroupsJoined)} (hoy: ${formatNumber(u.todayTotals.fbNewGroupsJoined)})`,
       ]),
       headStyles: { fillColor: [37, 99, 235] },
       styles: { fontSize: 8 },
@@ -494,33 +522,45 @@ export default function AdminDashboard() {
                     user.totals.whatsappGroupsReached,
                     user.totals.whatsappMessagesPerGroup
                   );
+                  const todayMessages = calculateTotalMessages(
+                    user.todayTotals.whatsappGroupsReached,
+                    user.todayTotals.whatsappMessagesPerGroup
+                  );
 
                   return (
                     <tr key={user.user.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 font-medium text-gray-900">
                         {user.user.name}
                       </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {formatNumber(user.totals.whatsappGroupsReached)}
-                      </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {formatNumber(user.totals.whatsappMessagesPerGroup)}
-                      </td>
-                      <td className="px-6 py-4 text-center text-green-600 font-semibold">
-                        {formatNumber(totalMessages)}
-                      </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {formatNumber(user.totals.fbOwnPostsCreated)}
-                      </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {formatNumber(user.totals.fbCommentsMade)}
-                      </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {formatNumber(user.totals.fbGroupsShared)}
-                      </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {formatNumber(user.totals.fbNewGroupsJoined)}
-                      </td>
+                      <MetricCell
+                        today={user.todayTotals.whatsappGroupsReached}
+                        total={user.totals.whatsappGroupsReached}
+                      />
+                      <MetricCell
+                        today={user.todayTotals.whatsappMessagesPerGroup}
+                        total={user.totals.whatsappMessagesPerGroup}
+                      />
+                      <MetricCell
+                        today={todayMessages}
+                        total={totalMessages}
+                        highlight
+                      />
+                      <MetricCell
+                        today={user.todayTotals.fbOwnPostsCreated}
+                        total={user.totals.fbOwnPostsCreated}
+                      />
+                      <MetricCell
+                        today={user.todayTotals.fbCommentsMade}
+                        total={user.totals.fbCommentsMade}
+                      />
+                      <MetricCell
+                        today={user.todayTotals.fbGroupsShared}
+                        total={user.totals.fbGroupsShared}
+                      />
+                      <MetricCell
+                        today={user.todayTotals.fbNewGroupsJoined}
+                        total={user.totals.fbNewGroupsJoined}
+                      />
                       <td className="px-6 py-4 text-center">
                         {user.user.driveFolderUrl ? (
                           <a
@@ -552,66 +592,75 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Table 2: Facebook Links */}
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-        <div className="px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+      {/* Facebook Links: button that opens a modal */}
+      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <span>🔗</span> Enlaces de Facebook Compartidos
           </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            {facebookLinks.length} enlace(s) en el rango de fechas seleccionado
+          </p>
         </div>
+        <button
+          onClick={() => setShowLinksModal(true)}
+          disabled={facebookLinks.length === 0}
+          className="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 transition-all duration-200 transform hover:scale-105 disabled:scale-100 shadow-md hover:shadow-lg"
+        >
+          🔗 Ver Enlaces
+        </button>
+      </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-100 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left font-semibold text-gray-700">
-                  Usuario
-                </th>
-                <th className="px-6 py-3 text-left font-semibold text-gray-700">
-                  Fecha
-                </th>
-                <th className="px-6 py-3 text-left font-semibold text-gray-700">
-                  Enlace
-                </th>
-              </tr>
-            </thead>
+      {/* Facebook Links Modal */}
+      {showLinksModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col border border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <span>🔗</span> Enlaces de Facebook ({facebookLinks.length})
+              </h3>
+              <button
+                onClick={() => setShowLinksModal(false)}
+                className="text-gray-400 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
 
-            <tbody className="divide-y divide-gray-200">
+            <div className="overflow-y-auto p-6 space-y-3">
               {facebookLinks.length > 0 ? (
                 facebookLinks.map((item, index) => (
-                  <tr key={`${item.userId}-${index}`} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900">
-                      {item.userName}
-                    </td>
-                    <td className="px-6 py-4 text-gray-700">
-                      {new Date(item.date).toLocaleDateString("es-ES")}
-                    </td>
-                    <td className="px-6 py-4">
-                      <a
-                        href={item.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 hover:underline break-all"
-                      >
-                        {item.link}
-                      </a>
-                    </td>
-                  </tr>
+                  <div
+                    key={`${item.userId}-${index}`}
+                    className="p-4 bg-gray-50 rounded-lg border border-gray-200"
+                  >
+                    <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                      <span className="font-semibold text-gray-900 text-sm">
+                        {item.userName}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(item.date).toLocaleDateString("es-ES")}
+                      </span>
+                    </div>
+                    <a
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 hover:underline break-all text-sm"
+                    >
+                      {item.link}
+                    </a>
+                  </div>
                 ))
               ) : (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="px-6 py-8 text-center text-gray-500"
-                  >
-                    No hay enlaces de Facebook para el rango de fechas seleccionado
-                  </td>
-                </tr>
+                <p className="text-center text-gray-500 py-8">
+                  No hay enlaces de Facebook para el rango de fechas seleccionado
+                </p>
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
