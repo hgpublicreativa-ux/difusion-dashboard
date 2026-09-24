@@ -47,6 +47,8 @@ export async function uploadFileToFolder(
   folderId: string,
   file: File
 ): Promise<string> {
+  let fileId: string | undefined;
+
   try {
     const fileBuffer = await file.arrayBuffer();
 
@@ -62,16 +64,28 @@ export async function uploadFileToFolder(
       fields: "id, webViewLink",
     });
 
-    // Make file publicly readable (optional, based on your needs)
-    await drive.permissions.create({
-      fileId: response.data.id!,
-      requestBody: {
-        role: "reader",
-        type: "anyone",
-      },
-    });
+    fileId = response.data.id!;
 
-    return response.data.webViewLink || `https://drive.google.com/file/d/${response.data.id}`;
+    // Try to make the file publicly readable. Some Google Workspace
+    // organizations block external sharing via policy — if that happens,
+    // the file is still uploaded successfully, so don't fail the whole
+    // upload over it.
+    try {
+      await drive.permissions.create({
+        fileId,
+        requestBody: {
+          role: "reader",
+          type: "anyone",
+        },
+      });
+    } catch (permissionError) {
+      console.warn(
+        `Could not make file publicly readable (org policy may block this): ${file.name}`,
+        permissionError
+      );
+    }
+
+    return response.data.webViewLink || `https://drive.google.com/file/d/${fileId}`;
   } catch (error) {
     console.error("Error uploading file:", error);
     throw new Error(`Failed to upload file: ${file.name}`);
