@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   getAggregatedByUser,
-  getAggregatedByCampaign,
+  getFacebookLinksByDateRange,
 } from "@/lib/actions";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -25,24 +25,16 @@ interface AggregatedUser {
   };
 }
 
-interface AggregatedCampaign {
-  campaignName: string;
-  entriesCount: number;
-  totals: {
-    whatsappGroupsReached: number;
-    whatsappMessagesPerGroup: number;
-    fbOwnPostsCreated: number;
-    fbCommentsMade: number;
-    fbGroupsShared: number;
-    fbNewGroupsJoined: number;
-  };
+interface FacebookLink {
+  userId: string;
+  userName: string;
+  date: Date;
+  link: string;
 }
 
 export default function AdminDashboard() {
   const [userAggregates, setUserAggregates] = useState<AggregatedUser[]>([]);
-  const [campaignAggregates, setCampaignAggregates] = useState<
-    AggregatedCampaign[]
-  >([]);
+  const [facebookLinks, setFacebookLinks] = useState<FacebookLink[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -58,7 +50,7 @@ export default function AdminDashboard() {
       const endDateObj = endDate ? new Date(endDate) : undefined;
 
       const userResult = await getAggregatedByUser(startDateObj, endDateObj);
-      const campaignResult = await getAggregatedByCampaign(
+      const linksResult = await getFacebookLinksByDateRange(
         startDateObj,
         endDateObj
       );
@@ -69,10 +61,10 @@ export default function AdminDashboard() {
         setError(userResult.error || "Failed to load user data");
       }
 
-      if (campaignResult.success) {
-        setCampaignAggregates(campaignResult.data as AggregatedCampaign[]);
+      if (linksResult.success) {
+        setFacebookLinks(linksResult.data as FacebookLink[]);
       } else {
-        setError(campaignResult.error || "Failed to load campaign data");
+        setError(linksResult.error || "Failed to load Facebook links");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -211,45 +203,24 @@ export default function AdminDashboard() {
       (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable
         ?.finalY || 46;
 
-    doc.setFontSize(13);
-    doc.setTextColor(30, 30, 30);
-    doc.text("Totales por Campaña", 14, afterUserTableY + 12);
+    if (facebookLinks.length > 0) {
+      doc.setFontSize(13);
+      doc.setTextColor(30, 30, 30);
+      doc.text("Enlaces de Facebook Compartidos", 14, afterUserTableY + 12);
 
-    autoTable(doc, {
-      startY: afterUserTableY + 16,
-      head: [
-        [
-          "Campaña",
-          "Entradas",
-          "WA Grupos",
-          "WA Msj/Grupo",
-          "WA Total Msj",
-          "FB Posts",
-          "FB Comentarios",
-          "FB Grupos Comp.",
-          "FB Grupos Nuevos",
-        ],
-      ],
-      body: campaignAggregates.map((c) => [
-        c.campaignName,
-        String(c.entriesCount),
-        formatNumber(c.totals.whatsappGroupsReached),
-        formatNumber(c.totals.whatsappMessagesPerGroup),
-        formatNumber(
-          calculateTotalMessages(
-            c.totals.whatsappGroupsReached,
-            c.totals.whatsappMessagesPerGroup
-          )
-        ),
-        formatNumber(c.totals.fbOwnPostsCreated),
-        formatNumber(c.totals.fbCommentsMade),
-        formatNumber(c.totals.fbGroupsShared),
-        formatNumber(c.totals.fbNewGroupsJoined),
-      ]),
-      headStyles: { fillColor: [147, 51, 234] },
-      styles: { fontSize: 8 },
-      margin: { left: 14, right: 14 },
-    });
+      autoTable(doc, {
+        startY: afterUserTableY + 16,
+        head: [["Usuario", "Fecha", "Enlace"]],
+        body: facebookLinks.map((l) => [
+          l.userName,
+          new Date(l.date).toLocaleDateString("es-ES"),
+          l.link,
+        ]),
+        headStyles: { fillColor: [147, 51, 234] },
+        styles: { fontSize: 8 },
+        margin: { left: 14, right: 14 },
+      });
+    }
 
     const fileDateLabel =
       startDate || endDate
@@ -581,11 +552,11 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Table 2: By Campaign */}
+      {/* Table 2: Facebook Links */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
         <div className="px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <span>🎯</span> Totales por Campaña
+            <span>🔗</span> Enlaces de Facebook Compartidos
           </h2>
         </div>
 
@@ -594,82 +565,46 @@ export default function AdminDashboard() {
             <thead className="bg-gray-100 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-left font-semibold text-gray-700">
-                  Campaign
+                  Usuario
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  Entries
+                <th className="px-6 py-3 text-left font-semibold text-gray-700">
+                  Fecha
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Groups
-                </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Mensajes/Grupo
-                </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Total Mensajes Enviados
-                </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Posts
-                </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Comments
-                </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Groups Shared
-                </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  FB New Groups
+                <th className="px-6 py-3 text-left font-semibold text-gray-700">
+                  Enlace
                 </th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-gray-200">
-              {campaignAggregates.length > 0 ? (
-                campaignAggregates.map((campaign) => {
-                  const totalMessages = calculateTotalMessages(
-                    campaign.totals.whatsappGroupsReached,
-                    campaign.totals.whatsappMessagesPerGroup
-                  );
-
-                  return (
-                    <tr key={campaign.campaignName} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 font-medium text-gray-900">
-                        {campaign.campaignName}
-                      </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {campaign.entriesCount}
-                      </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {formatNumber(campaign.totals.whatsappGroupsReached)}
-                      </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {formatNumber(campaign.totals.whatsappMessagesPerGroup)}
-                      </td>
-                      <td className="px-6 py-4 text-center text-green-600 font-semibold">
-                        {formatNumber(totalMessages)}
-                      </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {formatNumber(campaign.totals.fbOwnPostsCreated)}
-                      </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {formatNumber(campaign.totals.fbCommentsMade)}
-                      </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {formatNumber(campaign.totals.fbGroupsShared)}
-                      </td>
-                      <td className="px-6 py-4 text-center text-gray-700">
-                        {formatNumber(campaign.totals.fbNewGroupsJoined)}
-                      </td>
-                    </tr>
-                  );
-                })
+              {facebookLinks.length > 0 ? (
+                facebookLinks.map((item, index) => (
+                  <tr key={`${item.userId}-${index}`} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-medium text-gray-900">
+                      {item.userName}
+                    </td>
+                    <td className="px-6 py-4 text-gray-700">
+                      {new Date(item.date).toLocaleDateString("es-ES")}
+                    </td>
+                    <td className="px-6 py-4">
+                      <a
+                        href={item.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 hover:underline break-all"
+                      >
+                        {item.link}
+                      </a>
+                    </td>
+                  </tr>
+                ))
               ) : (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={3}
                     className="px-6 py-8 text-center text-gray-500"
                   >
-                    No data available for the selected date range
+                    No hay enlaces de Facebook para el rango de fechas seleccionado
                   </td>
                 </tr>
               )}

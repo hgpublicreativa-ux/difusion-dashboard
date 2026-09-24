@@ -106,47 +106,40 @@ export async function getAggregatedByUser(
   }
 }
 
-export async function getAggregatedByCampaign(
+export async function getFacebookLinksByDateRange(
   startDate?: Date,
   endDate?: Date
 ) {
   try {
-    const aggregated = await prisma.activityLog.groupBy({
-      by: ["campaignName"],
+    const logs = await prisma.activityLog.findMany({
       where: {
         date: {
           ...(startDate && { gte: startDate }),
           ...(endDate && { lte: endDate }),
         },
+        fbOwnPostsLinks: { isEmpty: false },
       },
-      _sum: {
-        whatsappGroupsReached: true,
-        whatsappMessagesPerGroup: true,
-        fbOwnPostsCreated: true,
-        fbCommentsMade: true,
-        fbGroupsShared: true,
-        fbNewGroupsJoined: true,
+      include: {
+        user: true,
       },
-      _count: true,
+      orderBy: {
+        date: "desc",
+      },
     });
 
-    const result = aggregated.map((agg) => ({
-      campaignName: agg.campaignName,
-      entriesCount: agg._count,
-      totals: {
-        whatsappGroupsReached: agg._sum.whatsappGroupsReached || 0,
-        whatsappMessagesPerGroup: agg._sum.whatsappMessagesPerGroup || 0,
-        fbOwnPostsCreated: agg._sum.fbOwnPostsCreated || 0,
-        fbCommentsMade: agg._sum.fbCommentsMade || 0,
-        fbGroupsShared: agg._sum.fbGroupsShared || 0,
-        fbNewGroupsJoined: agg._sum.fbNewGroupsJoined || 0,
-      },
-    }));
+    const result = logs.flatMap((log) =>
+      log.fbOwnPostsLinks.map((link) => ({
+        userId: log.userId,
+        userName: log.user.name,
+        date: log.date,
+        link,
+      }))
+    );
 
     return { success: true, data: result };
   } catch (error) {
-    console.error("Error aggregating by campaign:", error);
-    return { success: false, error: "Failed to aggregate data" };
+    console.error("Error fetching Facebook links:", error);
+    return { success: false, error: "Failed to fetch Facebook links" };
   }
 }
 
