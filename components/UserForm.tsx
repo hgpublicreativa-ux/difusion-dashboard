@@ -181,8 +181,8 @@ export default function UserForm({ userName, userId }: UserFormProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-12 px-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-2xl mx-auto border border-gray-100">
+    <div className="max-w-2xl mx-auto">
+      <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
             <span className="text-white text-xl">📊</span>
