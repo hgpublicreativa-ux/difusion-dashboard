@@ -143,17 +143,38 @@ export default function AdminDashboard() {
         ),
       0
     );
+    const totalFbPosts = userAggregates.reduce(
+      (sum, u) => sum + u.totals.fbOwnPostsCreated,
+      0
+    );
+    const totalFbComments = userAggregates.reduce(
+      (sum, u) => sum + u.totals.fbCommentsMade,
+      0
+    );
+    const totalFbGroupsShared = userAggregates.reduce(
+      (sum, u) => sum + u.totals.fbGroupsShared,
+      0
+    );
+    const totalFbNewGroups = userAggregates.reduce(
+      (sum, u) => sum + u.totals.fbNewGroupsJoined,
+      0
+    );
 
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setTextColor(30, 30, 30);
     doc.text(
-      `Total Grupos Alcanzados: ${formatNumber(totalGroups)}   |   Total Mensajes Enviados: ${formatNumber(totalMessages)}`,
+      `WA Grupos: ${formatNumber(totalGroups)}   |   WA Mensajes: ${formatNumber(totalMessages)}   |   FB Posts: ${formatNumber(totalFbPosts)}`,
       14,
       40
     );
+    doc.text(
+      `FB Comentarios: ${formatNumber(totalFbComments)}   |   FB Grupos Compartidos: ${formatNumber(totalFbGroupsShared)}   |   FB Grupos Nuevos: ${formatNumber(totalFbNewGroups)}`,
+      14,
+      46
+    );
 
     autoTable(doc, {
-      startY: 46,
+      startY: 52,
       head: [
         [
           "Usuario",
@@ -310,44 +331,148 @@ export default function AdminDashboard() {
       </div>
 
       {/* Summary Stats */}
-      {userAggregates.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-lg p-6 border-l-4 border-blue-600">
-            <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-2">
-              📱 Total Grupos Alcanzados
-            </h3>
-            <p className="text-4xl font-bold text-blue-600">
-              {formatNumber(
-                userAggregates.reduce(
-                  (sum, user) => sum + user.totals.whatsappGroupsReached,
-                  0
-                )
-              )}
-            </p>
-            <p className="text-sm text-blue-700 mt-2">grupos de WhatsApp</p>
-          </div>
+      {userAggregates.length > 0 && (() => {
+        const totals = userAggregates.reduce(
+          (acc, user) => ({
+            groups: acc.groups + user.totals.whatsappGroupsReached,
+            messages:
+              acc.messages +
+              calculateTotalMessages(
+                user.totals.whatsappGroupsReached,
+                user.totals.whatsappMessagesPerGroup
+              ),
+            fbPosts: acc.fbPosts + user.totals.fbOwnPostsCreated,
+            fbComments: acc.fbComments + user.totals.fbCommentsMade,
+            fbGroupsShared: acc.fbGroupsShared + user.totals.fbGroupsShared,
+            fbNewGroups: acc.fbNewGroups + user.totals.fbNewGroupsJoined,
+          }),
+          {
+            groups: 0,
+            messages: 0,
+            fbPosts: 0,
+            fbComments: 0,
+            fbGroupsShared: 0,
+            fbNewGroups: 0,
+          }
+        );
 
-          <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl shadow-lg p-6 border-l-4 border-green-600">
-            <h3 className="text-sm font-bold text-green-900 uppercase tracking-wide mb-2">
-              💬 Total Mensajes Enviados
-            </h3>
-            <p className="text-4xl font-bold text-green-600">
-              {formatNumber(
-                userAggregates.reduce(
-                  (sum, user) =>
-                    sum +
-                    calculateTotalMessages(
-                      user.totals.whatsappGroupsReached,
-                      user.totals.whatsappMessagesPerGroup
-                    ),
-                  0
-                )
-              )}
-            </p>
-            <p className="text-sm text-green-700 mt-2">mensajes de WhatsApp</p>
+        const cards = [
+          {
+            icon: "📱",
+            label: "Total Grupos Alcanzados",
+            value: totals.groups,
+            unit: "grupos de WhatsApp",
+            color: "blue",
+          },
+          {
+            icon: "💬",
+            label: "Total Mensajes Enviados",
+            value: totals.messages,
+            unit: "mensajes de WhatsApp",
+            color: "green",
+          },
+          {
+            icon: "📝",
+            label: "Total Posts Creados",
+            value: totals.fbPosts,
+            unit: "posts de Facebook",
+            color: "indigo",
+          },
+          {
+            icon: "💭",
+            label: "Total Comentarios",
+            value: totals.fbComments,
+            unit: "comentarios de Facebook",
+            color: "purple",
+          },
+          {
+            icon: "🔗",
+            label: "Total Grupos Compartidos",
+            value: totals.fbGroupsShared,
+            unit: "grupos de Facebook",
+            color: "pink",
+          },
+          {
+            icon: "✨",
+            label: "Total Grupos Nuevos",
+            value: totals.fbNewGroups,
+            unit: "grupos nuevos de Facebook",
+            color: "amber",
+          },
+        ];
+
+        const colorClasses: Record<
+          string,
+          { bg: string; border: string; title: string; value: string; unit: string }
+        > = {
+          blue: {
+            bg: "from-blue-50 to-blue-100",
+            border: "border-blue-600",
+            title: "text-blue-900",
+            value: "text-blue-600",
+            unit: "text-blue-700",
+          },
+          green: {
+            bg: "from-green-50 to-emerald-100",
+            border: "border-green-600",
+            title: "text-green-900",
+            value: "text-green-600",
+            unit: "text-green-700",
+          },
+          indigo: {
+            bg: "from-indigo-50 to-indigo-100",
+            border: "border-indigo-600",
+            title: "text-indigo-900",
+            value: "text-indigo-600",
+            unit: "text-indigo-700",
+          },
+          purple: {
+            bg: "from-purple-50 to-purple-100",
+            border: "border-purple-600",
+            title: "text-purple-900",
+            value: "text-purple-600",
+            unit: "text-purple-700",
+          },
+          pink: {
+            bg: "from-pink-50 to-pink-100",
+            border: "border-pink-600",
+            title: "text-pink-900",
+            value: "text-pink-600",
+            unit: "text-pink-700",
+          },
+          amber: {
+            bg: "from-amber-50 to-amber-100",
+            border: "border-amber-600",
+            title: "text-amber-900",
+            value: "text-amber-600",
+            unit: "text-amber-700",
+          },
+        };
+
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {cards.map((card) => {
+              const c = colorClasses[card.color];
+              return (
+                <div
+                  key={card.label}
+                  className={`bg-gradient-to-br ${c.bg} rounded-xl shadow-lg p-6 border-l-4 ${c.border}`}
+                >
+                  <h3
+                    className={`text-sm font-bold ${c.title} uppercase tracking-wide mb-2`}
+                  >
+                    {card.icon} {card.label}
+                  </h3>
+                  <p className={`text-4xl font-bold ${c.value}`}>
+                    {formatNumber(card.value)}
+                  </p>
+                  <p className={`text-sm ${c.unit} mt-2`}>{card.unit}</p>
+                </div>
+              );
+            })}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Table 1: By User */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
