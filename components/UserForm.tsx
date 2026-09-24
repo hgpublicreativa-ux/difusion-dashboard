@@ -26,15 +26,27 @@ export default function UserForm({ userName, userId }: UserFormProps) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const MAX_FILES_PER_UPLOAD = 20;
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
 
     if (type === "file") {
       const files = (e.target as HTMLInputElement).files;
       if (files) {
+        const selectedFiles = Array.from(files);
+
+        if (selectedFiles.length > MAX_FILES_PER_UPLOAD) {
+          setError(
+            `Solo puedes subir un máximo de ${MAX_FILES_PER_UPLOAD} archivos a la vez. Se seleccionaron los primeros ${MAX_FILES_PER_UPLOAD}.`
+          );
+        } else {
+          setError("");
+        }
+
         setFormData((prev) => ({
           ...prev,
-          [name]: Array.from(files),
+          [name]: selectedFiles.slice(0, MAX_FILES_PER_UPLOAD),
         }));
       }
     } else {
@@ -249,7 +261,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             <span>💬</span> Métricas WhatsApp
           </h3>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-green-900">
                 Grupos Alcanzados
@@ -336,7 +348,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-3">
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-blue-900">
                   Comentarios
@@ -398,6 +410,9 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             accept="image/*,video/*"
             className="w-full cursor-pointer"
           />
+          <p className="mt-2 text-xs text-green-800">
+            Puedes seleccionar hasta {MAX_FILES_PER_UPLOAD} archivos a la vez.
+          </p>
           {formData.whatsappFiles.length > 0 && (
             <div className="mt-3 p-3 bg-green-100 rounded-lg text-sm text-green-900 font-medium">
               ✓ {formData.whatsappFiles.length} archivo(s) de WhatsApp seleccionado(s)
@@ -418,6 +433,9 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             accept="image/*,video/*"
             className="w-full cursor-pointer"
           />
+          <p className="mt-2 text-xs text-blue-800">
+            Puedes seleccionar hasta {MAX_FILES_PER_UPLOAD} archivos a la vez.
+          </p>
           {formData.facebookFiles.length > 0 && (
             <div className="mt-3 p-3 bg-blue-100 rounded-lg text-sm text-blue-900 font-medium">
               ✓ {formData.facebookFiles.length} archivo(s) de Facebook seleccionado(s)
