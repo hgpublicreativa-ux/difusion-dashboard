@@ -121,6 +121,7 @@ export async function createUserFolderStructure(
 ): Promise<{
   drive: drive_v3.Drive;
   folderUrl: string;
+  userFolderUrl: string;
   whatsappFolderId: string;
   facebookFolderId: string;
 }> {
@@ -146,8 +147,9 @@ export async function createUserFolderStructure(
     const facebookFolderId = await findOrCreateFolder(drive, dateFolderId, "EVIDENCIA_FACEBOOK");
 
     const folderUrl = await getFolderLink(dateFolderId);
+    const userFolderUrl = await getFolderLink(userFolderId);
 
-    return { drive, folderUrl, whatsappFolderId, facebookFolderId };
+    return { drive, folderUrl, userFolderUrl, whatsappFolderId, facebookFolderId };
   } catch (error) {
     console.error("Error creating user folder structure:", error);
     throw error;

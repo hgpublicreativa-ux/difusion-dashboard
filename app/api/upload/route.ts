@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     ) as string[];
 
     // Create folder structure in Drive
-    const { drive, folderUrl, whatsappFolderId, facebookFolderId } =
+    const { drive, folderUrl, userFolderUrl, whatsappFolderId, facebookFolderId } =
       await createUserFolderStructure(userName, date);
 
     // Get all files from the form
@@ -95,6 +95,12 @@ export async function POST(request: NextRequest) {
         fbNewGroupsJoined,
         driveEvidenceFolderUrl: folderUrl,
       },
+    });
+
+    // Keep the user's root Drive folder link up to date
+    await prisma.user.update({
+      where: { id: userId },
+      data: { driveFolderUrl: userFolderUrl },
     });
 
     return NextResponse.json(

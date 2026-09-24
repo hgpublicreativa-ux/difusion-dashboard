@@ -13,6 +13,7 @@ interface AggregatedUser {
     id: string;
     name: string;
     email: string;
+    driveFolderUrl: string | null;
   };
   totals: {
     whatsappGroupsReached: number;
@@ -425,14 +426,20 @@ export default function AdminDashboard() {
                         {formatNumber(user.totals.fbNewGroupsJoined)}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <a
-                          href="https://drive.google.com"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded hover:bg-blue-600"
-                        >
-                          View
-                        </a>
+                        {user.user.driveFolderUrl ? (
+                          <a
+                            href={user.user.driveFolderUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded hover:bg-blue-600"
+                          >
+                            📁 Ver
+                          </a>
+                        ) : (
+                          <span className="px-3 py-1 bg-gray-100 text-gray-400 text-xs font-semibold rounded">
+                            Sin evidencias
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
