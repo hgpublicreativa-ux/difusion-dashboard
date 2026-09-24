@@ -186,7 +186,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         </div>
         <p className="text-gray-600 mb-8">Hola, <span className="font-semibold text-gray-900">{userName}</span>. Registra tu actividad del día.</p>
 
-      {error && (
+        {error && (
         <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-800 rounded-lg flex items-start gap-3">
           <span className="text-xl mt-1">⚠️</span>
           <div>
@@ -194,9 +194,9 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             <p className="text-sm">{error}</p>
           </div>
         </div>
-      )}
+        )}
 
-      {success && (
+        {success && (
         <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 text-green-800 rounded-lg flex items-start gap-3">
           <span className="text-xl mt-1">✅</span>
           <div>
@@ -204,9 +204,9 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             <p className="text-sm">{success}</p>
           </div>
         </div>
-      )}
+        )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
         {/* Campaign Name */}
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-gray-700">
@@ -415,7 +415,8 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             </span>
           )}
         </button>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }
