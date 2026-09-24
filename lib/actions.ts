@@ -109,11 +109,27 @@ export async function getAggregatedByUser(
 
     const userMap = new Map(users.map((u) => [u.id, u]));
 
+    // Which users have at least one non-empty observation in this range
+    const withObservations = await prisma.activityLog.findMany({
+      where: {
+        userId: { in: userIds },
+        date: {
+          ...(startDate && { gte: startDate }),
+          ...(endDate && { lte: endDate }),
+        },
+        observations: { not: null },
+      },
+      select: { userId: true },
+      distinct: ["userId"],
+    });
+    const observationUserIds = new Set(withObservations.map((o) => o.userId));
+
     const result = aggregated.map((agg) => {
       const today = todayMap.get(agg.userId);
 
       return {
         user: userMap.get(agg.userId)!,
+        hasObservations: observationUserIds.has(agg.userId),
         totals: {
           whatsappGroupsReached: agg._sum.whatsappGroupsReached || 0,
           whatsappMessagesPerGroup: agg._sum.whatsappMessagesPerGroup || 0,
@@ -137,6 +153,57 @@ export async function getAggregatedByUser(
   } catch (error) {
     console.error("Error aggregating by user:", error);
     return { success: false, error: "Failed to aggregate data" };
+  }
+}
+
+export async function getObservationsByUser(
+  userId: string,
+  startDate?: Date,
+  endDate?: Date
+) {
+  try {
+    const logs = await prisma.activityLog.findMany({
+      where: {
+        userId,
+        observations: { not: null },
+        date: {
+          ...(startDate && { gte: startDate }),
+          ...(endDate && { lte: endDate }),
+        },
+      },
+      orderBy: { date: "desc" },
+      select: { id: true, date: true, observations: true },
+    });
+
+    return { success: true, data: logs };
+  } catch (error) {
+    console.error("Error fetching observations:", error);
+    return { success: false, error: "Failed to fetch observations" };
+  }
+}
+
+export async function updateActivityLog(
+  id: string,
+  data: {
+    whatsappGroupsReached: number;
+    whatsappMessagesPerGroup: number;
+    fbOwnPostsCreated: number;
+    fbCommentsMade: number;
+    fbGroupsShared: number;
+    fbNewGroupsJoined: number;
+    observations?: string | null;
+  }
+) {
+  try {
+    const updated = await prisma.activityLog.update({
+      where: { id },
+      data,
+    });
+
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error("Error updating activity log:", error);
+    return { success: false, error: "Failed to update activity log" };
   }
 }
 

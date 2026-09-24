@@ -22,6 +22,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
     fbNewGroupsJoined: "",
     whatsappFiles: [] as File[],
     facebookFiles: [] as File[],
+    observations: "",
   });
 
   const [error, setError] = useState("");
@@ -56,6 +57,14 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         [name]: value,
       }));
     }
+  };
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleFbLinksChange = (index: number, value: string) => {
@@ -134,6 +143,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
       form.append("fbCommentsMade", formData.fbCommentsMade);
       form.append("fbGroupsShared", formData.fbGroupsShared);
       form.append("fbNewGroupsJoined", formData.fbNewGroupsJoined);
+      form.append("observations", formData.observations);
 
       // Add Facebook post links
       formData.fbOwnPostsLinks.forEach((link) => {
@@ -179,6 +189,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         fbNewGroupsJoined: "",
         whatsappFiles: [],
         facebookFiles: [],
+        observations: "",
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -424,6 +435,21 @@ export default function UserForm({ userName, userId }: UserFormProps) {
               ✓ {formData.facebookFiles.length} archivo(s) de Facebook seleccionado(s)
             </div>
           )}
+        </div>
+
+        {/* Observations */}
+        <div className="space-y-2">
+          <label className="block text-sm font-semibold text-gray-700">
+            📝 Observaciones (opcional)
+          </label>
+          <textarea
+            name="observations"
+            value={formData.observations}
+            onChange={handleTextareaChange}
+            placeholder="Cualquier comentario adicional sobre tu actividad de hoy..."
+            rows={3}
+            className="w-full resize-none"
+          />
         </div>
 
         {/* Submit Button */}

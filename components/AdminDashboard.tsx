@@ -5,6 +5,8 @@ import {
   getAggregatedByUser,
   getFacebookLinksByDateRange,
   getActivityLogsByDateRange,
+  getObservationsByUser,
+  updateActivityLog,
 } from "@/lib/actions";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -25,8 +27,25 @@ interface AggregatedUser {
     email: string;
     driveFolderUrl: string | null;
   };
+  hasObservations: boolean;
   totals: UserTotals;
   todayTotals: UserTotals;
+}
+
+interface ObservationEntry {
+  id: string;
+  date: Date;
+  observations: string | null;
+}
+
+interface EditFormState {
+  whatsappGroupsReached: string;
+  whatsappMessagesPerGroup: string;
+  fbOwnPostsCreated: string;
+  fbCommentsMade: string;
+  fbGroupsShared: string;
+  fbNewGroupsJoined: string;
+  observations: string;
 }
 
 interface FacebookLink {
@@ -46,6 +65,7 @@ interface DailyLog {
   fbGroupsShared: number;
   fbNewGroupsJoined: number;
   driveEvidenceFolderUrl: string | null;
+  observations: string | null;
   user: { id: string; name: string };
 }
 
@@ -55,7 +75,27 @@ export default function AdminDashboard() {
   const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showLinksModal, setShowLinksModal] = useState(false);
+
+  // Observations modal
+  const [observationsUser, setObservationsUser] = useState<{ id: string; name: string } | null>(null);
+  const [observationsData, setObservationsData] = useState<ObservationEntry[]>([]);
+  const [loadingObservations, setLoadingObservations] = useState(false);
+
+  // Facebook links per-user modal
+  const [linksModalUser, setLinksModalUser] = useState<{ id: string; name: string } | null>(null);
+
+  // Edit activity log modal
+  const [editingLog, setEditingLog] = useState<DailyLog | null>(null);
+  const [editFormData, setEditFormData] = useState<EditFormState>({
+    whatsappGroupsReached: "",
+    whatsappMessagesPerGroup: "",
+    fbOwnPostsCreated: "",
+    fbCommentsMade: "",
+    fbGroupsShared: "",
+    fbNewGroupsJoined: "",
+    observations: "",
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -108,6 +148,63 @@ export default function AdminDashboard() {
 
   const handleFilter = () => {
     loadData();
+  };
+
+  const handleOpenObservations = async (userId: string, userName: string) => {
+    setObservationsUser({ id: userId, name: userName });
+    setLoadingObservations(true);
+    try {
+      const startDateObj = startDate ? new Date(startDate) : undefined;
+      const endDateObj = endDate ? new Date(endDate) : undefined;
+      const result = await getObservationsByUser(userId, startDateObj, endDateObj);
+      if (result.success) {
+        setObservationsData(result.data as ObservationEntry[]);
+      } else {
+        setObservationsData([]);
+      }
+    } finally {
+      setLoadingObservations(false);
+    }
+  };
+
+  const handleOpenEditLog = (log: DailyLog) => {
+    setEditingLog(log);
+    setEditFormData({
+      whatsappGroupsReached: String(log.whatsappGroupsReached),
+      whatsappMessagesPerGroup: String(log.whatsappMessagesPerGroup),
+      fbOwnPostsCreated: String(log.fbOwnPostsCreated),
+      fbCommentsMade: String(log.fbCommentsMade),
+      fbGroupsShared: String(log.fbGroupsShared),
+      fbNewGroupsJoined: String(log.fbNewGroupsJoined),
+      observations: log.observations || "",
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingLog) return;
+
+    setIsSavingEdit(true);
+    setError("");
+    try {
+      const result = await updateActivityLog(editingLog.id, {
+        whatsappGroupsReached: parseInt(editFormData.whatsappGroupsReached) || 0,
+        whatsappMessagesPerGroup: parseInt(editFormData.whatsappMessagesPerGroup) || 0,
+        fbOwnPostsCreated: parseInt(editFormData.fbOwnPostsCreated) || 0,
+        fbCommentsMade: parseInt(editFormData.fbCommentsMade) || 0,
+        fbGroupsShared: parseInt(editFormData.fbGroupsShared) || 0,
+        fbNewGroupsJoined: parseInt(editFormData.fbNewGroupsJoined) || 0,
+        observations: editFormData.observations.trim() || null,
+      });
+
+      if (result.success) {
+        setEditingLog(null);
+        await loadData();
+      } else {
+        setError(result.error || "Failed to update activity log");
+      }
+    } finally {
+      setIsSavingEdit(false);
+    }
   };
 
   const calculateTotalMessages = (
@@ -555,7 +652,20 @@ export default function AdminDashboard() {
                   return (
                     <tr key={user.user.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 font-medium text-gray-900">
-                        {user.user.name}
+                        <div className="flex items-center gap-2">
+                          <span>{user.user.name}</span>
+                          <button
+                            onClick={() => handleOpenObservations(user.user.id, user.user.name)}
+                            title={user.hasObservations ? "Ver observaciones" : "Sin observaciones"}
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 transition-colors ${
+                              user.hasObservations
+                                ? "bg-red-500 text-white hover:bg-red-600"
+                                : "bg-gray-200 text-gray-400 hover:bg-gray-300"
+                            }`}
+                          >
+                            📝
+                          </button>
+                        </div>
                       </td>
                       <MetricCell
                         today={user.todayTotals.whatsappGroupsReached}
@@ -659,6 +769,9 @@ export default function AdminDashboard() {
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
                   Evidencias
                 </th>
+                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                  Acciones
+                </th>
               </tr>
             </thead>
 
@@ -704,11 +817,19 @@ export default function AdminDashboard() {
                         <span className="text-gray-400 text-xs">—</span>
                       )}
                     </td>
+                    <td className="px-6 py-3 text-center">
+                      <button
+                        onClick={() => handleOpenEditLog(log)}
+                        className="px-3 py-1 bg-amber-500 text-white text-xs font-semibold rounded hover:bg-amber-600"
+                      >
+                        ✏️ Editar
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
                     No hay registros para el rango de fechas seleccionado
                   </td>
                 </tr>
@@ -718,35 +839,75 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Facebook Links: button that opens a modal */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <span>🔗</span> Enlaces de Facebook Compartidos
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {facebookLinks.length} enlace(s) en el rango de fechas seleccionado
-          </p>
-        </div>
-        <button
-          onClick={() => setShowLinksModal(true)}
-          disabled={facebookLinks.length === 0}
-          className="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 transition-all duration-200 transform hover:scale-105 disabled:scale-100 shadow-md hover:shadow-lg"
-        >
-          🔗 Ver Enlaces
-        </button>
-      </div>
+      {/* Facebook Links: per-user list, each with its own "Ver Enlaces" button */}
+      {(() => {
+        const linksByUser = new Map<
+          string,
+          { userId: string; userName: string; links: FacebookLink[] }
+        >();
+        facebookLinks.forEach((item) => {
+          const entry = linksByUser.get(item.userId) || {
+            userId: item.userId,
+            userName: item.userName,
+            links: [],
+          };
+          entry.links.push(item);
+          linksByUser.set(item.userId, entry);
+        });
+        const usersWithLinks = Array.from(linksByUser.values());
 
-      {/* Facebook Links Modal */}
-      {showLinksModal && (
+        return (
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+            <div className="px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <span>🔗</span> Enlaces de Facebook Compartidos
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Enlaces agrupados por usuario en el rango de fechas seleccionado
+              </p>
+            </div>
+
+            <div className="divide-y divide-gray-200">
+              {usersWithLinks.length > 0 ? (
+                usersWithLinks.map((u) => (
+                  <div
+                    key={u.userId}
+                    className="px-6 py-4 flex items-center justify-between flex-wrap gap-3"
+                  >
+                    <div>
+                      <p className="font-semibold text-gray-900">{u.userName}</p>
+                      <p className="text-sm text-gray-500">
+                        {u.links.length} enlace(s)
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setLinksModalUser({ id: u.userId, name: u.userName })}
+                      className="px-5 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-semibold rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                    >
+                      🔗 Ver Enlaces
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-gray-500 py-8">
+                  No hay enlaces de Facebook para el rango de fechas seleccionado
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Per-user Facebook Links Modal */}
+      {linksModalUser && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col border border-gray-100">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col border border-gray-100">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <span>🔗</span> Enlaces de Facebook ({facebookLinks.length})
+                <span>🔗</span> Enlaces de {linksModalUser.name}
               </h3>
               <button
-                onClick={() => setShowLinksModal(false)}
+                onClick={() => setLinksModalUser(null)}
                 className="text-gray-400 hover:text-gray-700 text-2xl leading-none"
               >
                 ×
@@ -754,20 +915,16 @@ export default function AdminDashboard() {
             </div>
 
             <div className="overflow-y-auto p-6 space-y-3">
-              {facebookLinks.length > 0 ? (
-                facebookLinks.map((item, index) => (
+              {facebookLinks
+                .filter((l) => l.userId === linksModalUser.id)
+                .map((item, index) => (
                   <div
                     key={`${item.userId}-${index}`}
                     className="p-4 bg-gray-50 rounded-lg border border-gray-200"
                   >
-                    <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
-                      <span className="font-semibold text-gray-900 text-sm">
-                        {item.userName}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(item.date).toLocaleDateString("es-ES")}
-                      </span>
-                    </div>
+                    <span className="text-xs text-gray-500 block mb-1">
+                      {new Date(item.date).toLocaleDateString("es-ES")}
+                    </span>
                     <a
                       href={item.link}
                       target="_blank"
@@ -777,12 +934,187 @@ export default function AdminDashboard() {
                       {item.link}
                     </a>
                   </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Observations Modal */}
+      {observationsUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col border border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <span>📝</span> Observaciones de {observationsUser.name}
+              </h3>
+              <button
+                onClick={() => setObservationsUser(null)}
+                className="text-gray-400 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-6 space-y-3">
+              {loadingObservations ? (
+                <p className="text-center text-gray-500 py-8">⏳ Cargando...</p>
+              ) : observationsData.length > 0 ? (
+                observationsData.map((obs) => (
+                  <div
+                    key={obs.id}
+                    className="p-4 bg-red-50 rounded-lg border border-red-200"
+                  >
+                    <span className="text-xs text-red-700 font-semibold block mb-1">
+                      {new Date(obs.date).toLocaleDateString("es-ES")}
+                    </span>
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                      {obs.observations}
+                    </p>
+                  </div>
                 ))
               ) : (
                 <p className="text-center text-gray-500 py-8">
-                  No hay enlaces de Facebook para el rango de fechas seleccionado
+                  Sin observaciones en el rango de fechas seleccionado
                 </p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Activity Log Modal */}
+      {editingLog && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col border border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <span>✏️</span> Editar reporte
+              </h3>
+              <button
+                onClick={() => setEditingLog(null)}
+                className="text-gray-400 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-6 space-y-4">
+              <p className="text-sm text-gray-500">
+                {editingLog.user.name} · {new Date(editingLog.date).toLocaleDateString("es-ES")}
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    WA Grupos
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editFormData.whatsappGroupsReached}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({ ...p, whatsappGroupsReached: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    WA Mensajes/Grupo
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editFormData.whatsappMessagesPerGroup}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({ ...p, whatsappMessagesPerGroup: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    FB Posts
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editFormData.fbOwnPostsCreated}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({ ...p, fbOwnPostsCreated: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    FB Comentarios
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editFormData.fbCommentsMade}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({ ...p, fbCommentsMade: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    FB Grupos Compartidos
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editFormData.fbGroupsShared}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({ ...p, fbGroupsShared: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    FB Grupos Nuevos
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editFormData.fbNewGroupsJoined}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({ ...p, fbNewGroupsJoined: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-gray-700">
+                  Observaciones
+                </label>
+                <textarea
+                  rows={3}
+                  className="w-full resize-none"
+                  value={editFormData.observations}
+                  onChange={(e) =>
+                    setEditFormData((p) => ({ ...p, observations: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex gap-3 shrink-0">
+              <button
+                onClick={() => setEditingLog(null)}
+                disabled={isSavingEdit}
+                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={isSavingEdit}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold rounded-lg hover:from-amber-600 hover:to-orange-700 transition-all disabled:opacity-50"
+              >
+                {isSavingEdit ? "Guardando..." : "Guardar cambios"}
+              </button>
             </div>
           </div>
         </div>

@@ -64,6 +64,9 @@ model ActivityLog {
   // Drive folder
   driveEvidenceFolderUrl  String?
 
+  // Optional free-text notes from the member
+  observations            String?
+
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 

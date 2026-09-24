@@ -43,6 +43,8 @@ export async function POST(request: NextRequest) {
       (link) => link !== ""
     ) as string[];
 
+    const newObservations = ((formData.get("observations") as string) || "").trim();
+
     // Create folder structure in Drive
     const { drive, folderUrl, userFolderUrl, whatsappFolderId, facebookFolderId } =
       await createUserFolderStructure(userName, date);
@@ -84,6 +86,18 @@ export async function POST(request: NextRequest) {
     // always match the same row (date input is already YYYY-MM-DD).
     const normalizedDate = new Date(`${date}T00:00:00.000Z`);
 
+    // If this user already reported today, merge the new note into the
+    // existing one instead of overwriting it.
+    const existingLog = await prisma.activityLog.findUnique({
+      where: { userId_date: { userId, date: normalizedDate } },
+      select: { observations: true },
+    });
+    const mergedObservations = newObservations
+      ? existingLog?.observations
+        ? `${existingLog.observations}\n${newObservations}`
+        : newObservations
+      : existingLog?.observations || null;
+
     // Upsert: if this user already reported something today, accumulate
     // into that row instead of creating a duplicate for the same day.
     const activityLog = await prisma.activityLog.upsert({
@@ -102,6 +116,7 @@ export async function POST(request: NextRequest) {
         fbGroupsShared: { increment: fbGroupsShared },
         fbNewGroupsJoined: { increment: fbNewGroupsJoined },
         driveEvidenceFolderUrl: folderUrl,
+        observations: mergedObservations,
       },
       create: {
         userId,
@@ -115,6 +130,7 @@ export async function POST(request: NextRequest) {
         fbGroupsShared,
         fbNewGroupsJoined,
         driveEvidenceFolderUrl: folderUrl,
+        observations: newObservations || null,
       },
     });
 

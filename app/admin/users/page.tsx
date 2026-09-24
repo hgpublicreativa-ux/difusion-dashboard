@@ -123,6 +123,12 @@ export default function UsersPage() {
             </div>
             <div className="flex gap-1">
               <a
+                href="/"
+                className="px-4 py-2 text-gray-700 font-semibold hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                🏠 Inicio
+              </a>
+              <a
                 href="/admin"
                 className="px-4 py-2 text-gray-700 font-semibold hover:bg-blue-50 rounded-lg transition-colors"
               >
