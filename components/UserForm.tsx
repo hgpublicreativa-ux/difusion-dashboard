@@ -7,10 +7,11 @@ interface UserFormProps {
   userId: string;
 }
 
+const CAMPAIGN_NAME = "Difusión General";
+
 export default function UserForm({ userName, userId }: UserFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    campaignName: "",
     date: new Date().toISOString().split("T")[0],
     whatsappGroupsReached: "",
     whatsappMessagesPerGroup: "",
@@ -81,11 +82,6 @@ export default function UserForm({ userName, userId }: UserFormProps) {
   };
 
   const validateForm = (): boolean => {
-    if (!formData.campaignName.trim()) {
-      setError("Campaign name is required");
-      return false;
-    }
-
     // Validate numeric fields
     const numericFields = [
       "whatsappGroupsReached",
@@ -127,7 +123,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
       const form = new FormData();
       form.append("userId", userId);
       form.append("userName", userName);
-      form.append("campaignName", formData.campaignName);
+      form.append("campaignName", CAMPAIGN_NAME);
       form.append("date", formData.date);
       form.append("whatsappGroupsReached", formData.whatsappGroupsReached);
       form.append(
@@ -173,7 +169,6 @@ export default function UserForm({ userName, userId }: UserFormProps) {
 
       // Reset form
       setFormData({
-        campaignName: "",
         date: new Date().toISOString().split("T")[0],
         whatsappGroupsReached: "",
         whatsappMessagesPerGroup: "",
@@ -226,21 +221,6 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Campaign Name */}
-        <div className="space-y-2">
-          <label className="block text-sm font-semibold text-gray-700">
-            📝 Nombre de Campaña
-          </label>
-          <input
-            type="text"
-            name="campaignName"
-            value={formData.campaignName}
-            onChange={handleInputChange}
-            placeholder="Ej: Promoción de Verano, Black Friday, etc."
-            required
-          />
-        </div>
-
         {/* Date */}
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-gray-700">
