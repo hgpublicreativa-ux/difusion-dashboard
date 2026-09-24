@@ -82,6 +82,11 @@ export async function getFolderLink(folderId: string): Promise<string> {
   return `https://drive.google.com/drive/folders/${folderId}`;
 }
 
+function formatDateForFolder(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}-${month}-${year}`;
+}
+
 export async function createUserFolderStructure(
   userName: string,
   date: string
@@ -99,8 +104,9 @@ export async function createUserFolderStructure(
     // Create or get user folder
     const userFolderId = await findOrCreateFolder(mainFolderId, userName);
 
-    // Create or get date folder
-    const dateFolderId = await findOrCreateFolder(userFolderId, date);
+    // Create or get date folder (formatted as DD-MM-YYYY)
+    const folderDateName = formatDateForFolder(date);
+    const dateFolderId = await findOrCreateFolder(userFolderId, folderDateName);
 
     // Create or get WhatsApp evidence folder
     const whatsappFolderId = await findOrCreateFolder(dateFolderId, "EVIDENCIA_WHATSAPP");
