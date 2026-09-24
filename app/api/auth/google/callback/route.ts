@@ -34,9 +34,21 @@ export async function GET(request: NextRequest) {
     }
 
     oauth2Client.setCredentials(tokens);
-    const oauth2 = google.oauth2({ auth: oauth2Client, version: "v2" });
-    const userInfo = await oauth2.userinfo.get();
-    const accountEmail = userInfo.data.email || "unknown";
+
+    // Decode the email out of the id_token's payload locally instead of
+    // making a separate userinfo API call (which was failing with a 401).
+    let accountEmail = "unknown";
+    if (tokens.id_token) {
+      try {
+        const payloadBase64 = tokens.id_token.split(".")[1];
+        const payload = JSON.parse(
+          Buffer.from(payloadBase64, "base64url").toString("utf-8")
+        );
+        accountEmail = payload.email || "unknown";
+      } catch (decodeError) {
+        console.warn("Could not decode id_token payload:", decodeError);
+      }
+    }
 
     await prisma.googleAuthToken.upsert({
       where: { accountEmail },
