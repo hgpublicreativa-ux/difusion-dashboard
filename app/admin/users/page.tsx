@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createUser, getAllUsers } from "@/lib/actions";
+import { createUser, getAllUsers, deleteUser } from "@/lib/actions";
 import type { User } from "@prisma/client";
 
 export default function UsersPage() {
@@ -9,6 +9,8 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -80,6 +82,29 @@ export default function UsersPage() {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+
+    setIsDeleting(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const result = await deleteUser(userToDelete.id);
+      if (result.success) {
+        setSuccess(`Usuario "${userToDelete.name}" eliminado correctamente`);
+        setUserToDelete(null);
+        await loadUsers();
+      } else {
+        setError(result.error || "Failed to delete user");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -233,6 +258,9 @@ export default function UsersPage() {
                     <th className="px-6 py-3 text-left font-semibold text-gray-700">
                       Created At
                     </th>
+                    <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
 
@@ -258,11 +286,19 @@ export default function UsersPage() {
                         <td className="px-6 py-4 text-gray-700">
                           {new Date(user.createdAt).toLocaleDateString("es-ES")}
                         </td>
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            onClick={() => setUserToDelete(user)}
+                            className="px-3 py-1.5 bg-red-50 text-red-700 text-xs font-semibold rounded-lg hover:bg-red-100 border border-red-200 transition-colors"
+                          >
+                            🗑️ Eliminar
+                          </button>
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                         No users created yet
                       </td>
                     </tr>
@@ -273,6 +309,46 @@ export default function UsersPage() {
           </div>
         </div>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-gray-100">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Eliminar Usuario
+              </h3>
+            </div>
+
+            <p className="text-gray-700 mb-2">
+              ¿Estás seguro de eliminar a <span className="font-semibold">{userToDelete.name}</span> ({userToDelete.email})?
+            </p>
+            <p className="text-sm text-red-600 mb-6">
+              Esta acción también eliminará todos sus registros de actividad. No se puede deshacer.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setUserToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-lg hover:from-red-600 hover:to-red-700 transition-all disabled:opacity-50"
+              >
+                {isDeleting ? "Eliminando..." : "Sí, eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
