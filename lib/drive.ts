@@ -1,16 +1,46 @@
-import { google } from "googleapis";
+import { google, drive_v3 } from "googleapis";
 import { Readable } from "stream";
+import { prisma } from "./db";
 
-// Initialize Google Drive client
-const auth = new google.auth.JWT({
-  email: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL,
-  key: process.env.GOOGLE_DRIVE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-  scopes: ["https://www.googleapis.com/auth/drive"],
-});
+async function getDriveClient(): Promise<drive_v3.Drive> {
+  const tokenRecord = await prisma.googleAuthToken.findFirst({
+    orderBy: { updatedAt: "desc" },
+  });
 
-const drive = google.drive({ version: "v3", auth });
+  if (!tokenRecord) {
+    throw new Error(
+      "Google Drive not authorized yet. Visit /api/auth/google to connect a Google account."
+    );
+  }
+
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_OAUTH_CLIENT_ID,
+    process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+    process.env.GOOGLE_OAUTH_REDIRECT_URI
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: tokenRecord.refreshToken,
+  });
+
+  // Keep the stored access token fresh so we don't re-request one on every call.
+  oauth2Client.on("tokens", async (tokens) => {
+    if (tokens.access_token) {
+      await prisma.googleAuthToken.update({
+        where: { id: tokenRecord.id },
+        data: {
+          accessToken: tokens.access_token,
+          expiryDate: tokens.expiry_date ? BigInt(tokens.expiry_date) : null,
+        },
+      }).catch((err) => console.error("Failed to persist refreshed token:", err));
+    }
+  });
+
+  return google.drive({ version: "v3", auth: oauth2Client });
+}
 
 export async function findOrCreateFolder(
+  drive: drive_v3.Drive,
   parentFolderId: string,
   folderName: string
 ): Promise<string> {
@@ -45,6 +75,7 @@ export async function findOrCreateFolder(
 }
 
 export async function uploadFileToFolder(
+  drive: drive_v3.Drive,
   folderId: string,
   file: File
 ): Promise<string> {
@@ -68,25 +99,6 @@ export async function uploadFileToFolder(
 
     fileId = response.data.id!;
 
-    // Try to make the file publicly readable. Some Google Workspace
-    // organizations block external sharing via policy — if that happens,
-    // the file is still uploaded successfully, so don't fail the whole
-    // upload over it.
-    try {
-      await drive.permissions.create({
-        fileId,
-        requestBody: {
-          role: "reader",
-          type: "anyone",
-        },
-      });
-    } catch (permissionError) {
-      console.warn(
-        `Could not make file publicly readable (org policy may block this): ${file.name}`,
-        permissionError
-      );
-    }
-
     return response.data.webViewLink || `https://drive.google.com/file/d/${fileId}`;
   } catch (error) {
     console.error("Error uploading file:", error);
@@ -107,6 +119,7 @@ export async function createUserFolderStructure(
   userName: string,
   date: string
 ): Promise<{
+  drive: drive_v3.Drive;
   folderUrl: string;
   whatsappFolderId: string;
   facebookFolderId: string;
@@ -117,22 +130,24 @@ export async function createUserFolderStructure(
       throw new Error("GOOGLE_DRIVE_FOLDER_ID not configured");
     }
 
+    const drive = await getDriveClient();
+
     // Create or get user folder
-    const userFolderId = await findOrCreateFolder(mainFolderId, userName);
+    const userFolderId = await findOrCreateFolder(drive, mainFolderId, userName);
 
     // Create or get date folder (formatted as DD-MM-YYYY)
     const folderDateName = formatDateForFolder(date);
-    const dateFolderId = await findOrCreateFolder(userFolderId, folderDateName);
+    const dateFolderId = await findOrCreateFolder(drive, userFolderId, folderDateName);
 
     // Create or get WhatsApp evidence folder
-    const whatsappFolderId = await findOrCreateFolder(dateFolderId, "EVIDENCIA_WHATSAPP");
+    const whatsappFolderId = await findOrCreateFolder(drive, dateFolderId, "EVIDENCIA_WHATSAPP");
 
     // Create or get Facebook evidence folder
-    const facebookFolderId = await findOrCreateFolder(dateFolderId, "EVIDENCIA_FACEBOOK");
+    const facebookFolderId = await findOrCreateFolder(drive, dateFolderId, "EVIDENCIA_FACEBOOK");
 
     const folderUrl = await getFolderLink(dateFolderId);
 
-    return { folderUrl, whatsappFolderId, facebookFolderId };
+    return { drive, folderUrl, whatsappFolderId, facebookFolderId };
   } catch (error) {
     console.error("Error creating user folder structure:", error);
     throw error;

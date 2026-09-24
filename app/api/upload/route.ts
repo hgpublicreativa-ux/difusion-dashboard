@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     ) as string[];
 
     // Create folder structure in Drive
-    const { folderUrl, whatsappFolderId, facebookFolderId } =
+    const { drive, folderUrl, whatsappFolderId, facebookFolderId } =
       await createUserFolderStructure(userName, date);
 
     // Get all files from the form
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     // Upload WhatsApp files
     for (const file of whatsappFiles) {
       if (file.size > 0) {
-        await uploadFileToFolder(whatsappFolderId, file);
+        await uploadFileToFolder(drive, whatsappFolderId, file);
         uploadedCount++;
       }
     }
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     // Upload Facebook files
     for (const file of facebookFiles) {
       if (file.size > 0) {
-        await uploadFileToFolder(facebookFolderId, file);
+        await uploadFileToFolder(drive, facebookFolderId, file);
         uploadedCount++;
       }
     }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     for (const file of files) {
       if (file.size > 0 && !whatsappFiles.includes(file) && !facebookFiles.includes(file)) {
         // Determine folder based on file name or upload to whatsapp by default
-        await uploadFileToFolder(whatsappFolderId, file);
+        await uploadFileToFolder(drive, whatsappFolderId, file);
         uploadedCount++;
       }
     }
