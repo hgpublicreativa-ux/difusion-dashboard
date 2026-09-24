@@ -6,8 +6,6 @@ import {
   getAggregatedByCampaign,
 } from "@/lib/actions";
 
-const AVERAGE_PEOPLE_PER_GROUP = 150;
-
 interface AggregatedUser {
   user: {
     id: string;
@@ -88,16 +86,11 @@ export default function AdminDashboard() {
     loadData();
   };
 
-  const calculateReach = (groupsReached: number): number => {
-    return groupsReached * AVERAGE_PEOPLE_PER_GROUP;
-  };
-
-  const calculateImpacts = (
+  const calculateTotalMessages = (
     groupsReached: number,
     messagesPerGroup: number
   ): number => {
-    const reach = calculateReach(groupsReached);
-    return reach * messagesPerGroup;
+    return groupsReached * messagesPerGroup;
   };
 
   const formatNumber = (num: number): string => {
@@ -170,30 +163,29 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-lg p-6 border-l-4 border-blue-600">
             <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-2">
-              📱 Alcance Total WhatsApp
+              📱 Total Grupos Alcanzados
             </h3>
             <p className="text-4xl font-bold text-blue-600">
               {formatNumber(
                 userAggregates.reduce(
-                  (sum, user) =>
-                    sum + calculateReach(user.totals.whatsappGroupsReached),
+                  (sum, user) => sum + user.totals.whatsappGroupsReached,
                   0
                 )
               )}
             </p>
-            <p className="text-sm text-blue-700 mt-2">personas alcanzadas</p>
+            <p className="text-sm text-blue-700 mt-2">grupos de WhatsApp</p>
           </div>
 
           <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl shadow-lg p-6 border-l-4 border-green-600">
             <h3 className="text-sm font-bold text-green-900 uppercase tracking-wide mb-2">
-              💥 Impactos Totales
+              💬 Total Mensajes Enviados
             </h3>
             <p className="text-4xl font-bold text-green-600">
               {formatNumber(
                 userAggregates.reduce(
                   (sum, user) =>
                     sum +
-                    calculateImpacts(
+                    calculateTotalMessages(
                       user.totals.whatsappGroupsReached,
                       user.totals.whatsappMessagesPerGroup
                     ),
@@ -201,7 +193,7 @@ export default function AdminDashboard() {
                 )
               )}
             </p>
-            <p className="text-sm text-green-700 mt-2">interacciones totales</p>
+            <p className="text-sm text-green-700 mt-2">mensajes de WhatsApp</p>
           </div>
         </div>
       )}
@@ -225,13 +217,10 @@ export default function AdminDashboard() {
                   WA Groups
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Messages/Group
+                  WA Mensajes/Grupo
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Reach (Estimated)
-                </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Impacts
+                  WA Total Mensajes Enviados
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
                   FB Posts
@@ -254,10 +243,7 @@ export default function AdminDashboard() {
             <tbody className="divide-y divide-gray-200">
               {userAggregates.length > 0 ? (
                 userAggregates.map((user) => {
-                  const reach = calculateReach(
-                    user.totals.whatsappGroupsReached
-                  );
-                  const impacts = calculateImpacts(
+                  const totalMessages = calculateTotalMessages(
                     user.totals.whatsappGroupsReached,
                     user.totals.whatsappMessagesPerGroup
                   );
@@ -273,11 +259,8 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4 text-center text-gray-700">
                         {formatNumber(user.totals.whatsappMessagesPerGroup)}
                       </td>
-                      <td className="px-6 py-4 text-center text-blue-600 font-semibold">
-                        {formatNumber(reach)}
-                      </td>
                       <td className="px-6 py-4 text-center text-green-600 font-semibold">
-                        {formatNumber(impacts)}
+                        {formatNumber(totalMessages)}
                       </td>
                       <td className="px-6 py-4 text-center text-gray-700">
                         {formatNumber(user.totals.fbOwnPostsCreated)}
@@ -306,7 +289,7 @@ export default function AdminDashboard() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                     No data available for the selected date range
                   </td>
                 </tr>
@@ -338,13 +321,10 @@ export default function AdminDashboard() {
                   WA Groups
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Messages/Group
+                  WA Mensajes/Grupo
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Reach (Estimated)
-                </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Impacts
+                  WA Total Mensajes Enviados
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
                   FB Posts
@@ -364,10 +344,7 @@ export default function AdminDashboard() {
             <tbody className="divide-y divide-gray-200">
               {campaignAggregates.length > 0 ? (
                 campaignAggregates.map((campaign) => {
-                  const reach = calculateReach(
-                    campaign.totals.whatsappGroupsReached
-                  );
-                  const impacts = calculateImpacts(
+                  const totalMessages = calculateTotalMessages(
                     campaign.totals.whatsappGroupsReached,
                     campaign.totals.whatsappMessagesPerGroup
                   );
@@ -386,11 +363,8 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4 text-center text-gray-700">
                         {formatNumber(campaign.totals.whatsappMessagesPerGroup)}
                       </td>
-                      <td className="px-6 py-4 text-center text-blue-600 font-semibold">
-                        {formatNumber(reach)}
-                      </td>
                       <td className="px-6 py-4 text-center text-green-600 font-semibold">
-                        {formatNumber(impacts)}
+                        {formatNumber(totalMessages)}
                       </td>
                       <td className="px-6 py-4 text-center text-gray-700">
                         {formatNumber(campaign.totals.fbOwnPostsCreated)}
@@ -410,7 +384,7 @@ export default function AdminDashboard() {
               ) : (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={9}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     No data available for the selected date range
