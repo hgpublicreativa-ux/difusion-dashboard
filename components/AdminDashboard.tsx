@@ -61,6 +61,7 @@ interface DailyLog {
   whatsappGroupsReached: number;
   whatsappMessagesPerGroup: number;
   fbOwnPostsCreated: number;
+  fbOwnPostsLinks: string[];
   fbCommentsMade: number;
   fbGroupsShared: number;
   fbNewGroupsJoined: number;
@@ -96,6 +97,7 @@ export default function AdminDashboard() {
     observations: "",
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [newPostLinks, setNewPostLinks] = useState<string[]>([]);
 
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -178,6 +180,24 @@ export default function AdminDashboard() {
       fbNewGroupsJoined: String(log.fbNewGroupsJoined),
       observations: log.observations || "",
     });
+    setNewPostLinks([]);
+  };
+
+  // How many extra "new link" fields to show: only grows as fbOwnPostsCreated
+  // increases past the log's original value, so existing posts aren't affected.
+  const extraPostsCount = editingLog
+    ? Math.max(
+        0,
+        (parseInt(editFormData.fbOwnPostsCreated) || 0) - editingLog.fbOwnPostsCreated
+      )
+    : 0;
+
+  const handleNewPostLinkChange = (index: number, value: string) => {
+    setNewPostLinks((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
   };
 
   const handleSaveEdit = async () => {
@@ -194,10 +214,12 @@ export default function AdminDashboard() {
         fbGroupsShared: parseInt(editFormData.fbGroupsShared) || 0,
         fbNewGroupsJoined: parseInt(editFormData.fbNewGroupsJoined) || 0,
         observations: editFormData.observations.trim() || null,
+        newPostLinks: newPostLinks.slice(0, extraPostsCount),
       });
 
       if (result.success) {
         setEditingLog(null);
+        setNewPostLinks([]);
         await loadData();
       } else {
         setError(result.error || "Failed to update activity log");
@@ -1084,6 +1106,44 @@ export default function AdminDashboard() {
                   />
                 </div>
               </div>
+
+              {editingLog && editingLog.fbOwnPostsLinks.length > 0 && (
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    Enlaces ya registrados
+                  </label>
+                  <div className="space-y-1">
+                    {editingLog.fbOwnPostsLinks.map((link, i) => (
+                      <a
+                        key={i}
+                        href={link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-xs text-blue-600 hover:underline break-all"
+                      >
+                        {link}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {extraPostsCount > 0 && (
+                <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <label className="block text-xs font-semibold text-amber-900">
+                    Aumentaste FB Posts en {extraPostsCount} — agrega {extraPostsCount === 1 ? "su enlace" : "sus enlaces"} (opcional)
+                  </label>
+                  {Array.from({ length: extraPostsCount }).map((_, i) => (
+                    <input
+                      key={i}
+                      type="url"
+                      placeholder="https://facebook.com/..."
+                      value={newPostLinks[i] || ""}
+                      onChange={(e) => handleNewPostLinkChange(i, e.target.value)}
+                    />
+                  ))}
+                </div>
+              )}
 
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-700">

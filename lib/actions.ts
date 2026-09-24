@@ -192,12 +192,21 @@ export async function updateActivityLog(
     fbGroupsShared: number;
     fbNewGroupsJoined: number;
     observations?: string | null;
+    newPostLinks?: string[];
   }
 ) {
   try {
+    const { newPostLinks, ...rest } = data;
+    const cleanLinks = (newPostLinks || []).filter((l) => l.trim() !== "");
+
     const updated = await prisma.activityLog.update({
       where: { id },
-      data,
+      data: {
+        ...rest,
+        ...(cleanLinks.length > 0 && {
+          fbOwnPostsLinks: { push: cleanLinks },
+        }),
+      },
     });
 
     return { success: true, data: updated };
