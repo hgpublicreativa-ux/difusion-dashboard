@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { Readable } from "stream";
 
 // Initialize Google Drive client
 const auth = new google.auth.JWT({
@@ -51,6 +52,7 @@ export async function uploadFileToFolder(
 
   try {
     const fileBuffer = await file.arrayBuffer();
+    const fileStream = Readable.from(Buffer.from(fileBuffer));
 
     const response = await drive.files.create({
       requestBody: {
@@ -59,7 +61,7 @@ export async function uploadFileToFolder(
       },
       media: {
         mimeType: file.type,
-        body: Buffer.from(fileBuffer),
+        body: fileStream,
       },
       fields: "id, webViewLink",
     });
