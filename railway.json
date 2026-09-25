@@ -4,8 +4,10 @@
     "builder": "nixpacks"
   },
   "deploy": {
+    "preDeployCommand": "npx prisma migrate deploy",
     "startCommand": "npm run start",
-    "restartPolicyType": "always",
-    "restartPolicyMaxRetries": 10
+    "sleepApplication": true,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
   }
 }
