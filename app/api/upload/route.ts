@@ -53,6 +53,11 @@ export async function POST(request: NextRequest) {
       (link) => link !== ""
     ) as string[];
 
+    // Links of the posts the member commented on
+    const fbCommentLinks = formData.getAll("fbCommentLinks").filter(
+      (link) => link !== ""
+    ) as string[];
+
     const newObservations = ((formData.get("observations") as string) || "").trim();
 
     // Create folder structure in Drive
@@ -123,6 +128,7 @@ export async function POST(request: NextRequest) {
         fbOwnPostsCreated: { increment: fbOwnPostsCreated },
         fbOwnPostsLinks: { push: fbPostLinks },
         fbCommentsMade: { increment: fbCommentsMade },
+        fbCommentLinks: { push: fbCommentLinks },
         fbGroupsShared: { increment: fbGroupsShared },
         fbNewGroupsJoined: { increment: fbNewGroupsJoined },
         driveEvidenceFolderUrl: folderUrl,
@@ -137,6 +143,7 @@ export async function POST(request: NextRequest) {
         fbOwnPostsCreated,
         fbOwnPostsLinks: fbPostLinks,
         fbCommentsMade,
+        fbCommentLinks,
         fbGroupsShared,
         fbNewGroupsJoined,
         driveEvidenceFolderUrl: folderUrl,

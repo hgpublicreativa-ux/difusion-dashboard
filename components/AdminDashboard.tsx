@@ -53,6 +53,7 @@ interface FacebookLink {
   userName: string;
   date: Date;
   link: string;
+  kind: "post" | "comment";
 }
 
 interface DailyLog {
@@ -63,6 +64,7 @@ interface DailyLog {
   fbOwnPostsCreated: number;
   fbOwnPostsLinks: string[];
   fbCommentsMade: number;
+  fbCommentLinks: string[];
   fbGroupsShared: number;
   fbNewGroupsJoined: number;
   driveEvidenceFolderUrl: string | null;
@@ -98,6 +100,7 @@ export default function AdminDashboard() {
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [newPostLinks, setNewPostLinks] = useState<string[]>([]);
+  const [newCommentLinks, setNewCommentLinks] = useState<string[]>([]);
 
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -181,6 +184,7 @@ export default function AdminDashboard() {
       observations: log.observations || "",
     });
     setNewPostLinks([]);
+    setNewCommentLinks([]);
   };
 
   // How many extra "new link" fields to show: only grows as fbOwnPostsCreated
@@ -191,6 +195,22 @@ export default function AdminDashboard() {
         (parseInt(editFormData.fbOwnPostsCreated) || 0) - editingLog.fbOwnPostsCreated
       )
     : 0;
+
+  // Same idea for the posts the member commented on
+  const extraCommentsCount = editingLog
+    ? Math.max(
+        0,
+        (parseInt(editFormData.fbCommentsMade) || 0) - editingLog.fbCommentsMade
+      )
+    : 0;
+
+  const handleNewCommentLinkChange = (index: number, value: string) => {
+    setNewCommentLinks((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
 
   const handleNewPostLinkChange = (index: number, value: string) => {
     setNewPostLinks((prev) => {
@@ -215,11 +235,13 @@ export default function AdminDashboard() {
         fbNewGroupsJoined: parseInt(editFormData.fbNewGroupsJoined) || 0,
         observations: editFormData.observations.trim() || null,
         newPostLinks: newPostLinks.slice(0, extraPostsCount),
+        newCommentLinks: newCommentLinks.slice(0, extraCommentsCount),
       });
 
       if (result.success) {
         setEditingLog(null);
         setNewPostLinks([]);
+        setNewCommentLinks([]);
         await loadData();
       } else {
         setError(result.error || "Failed to update activity log");
@@ -354,14 +376,15 @@ export default function AdminDashboard() {
     if (facebookLinks.length > 0) {
       doc.setFontSize(13);
       doc.setTextColor(30, 30, 30);
-      doc.text("Enlaces de Facebook Compartidos", 14, afterUserTableY + 12);
+      doc.text("Enlaces de Facebook (posts propios y comentados)", 14, afterUserTableY + 12);
 
       autoTable(doc, {
         startY: afterUserTableY + 16,
-        head: [["Usuario", "Fecha", "Enlace"]],
+        head: [["Usuario", "Fecha", "Tipo", "Enlace"]],
         body: facebookLinks.map((l) => [
           l.userName,
           new Date(l.date).toLocaleDateString("es-ES"),
+          l.kind === "post" ? "Post propio" : "Comentado",
           l.link,
         ]),
         headStyles: { fillColor: [147, 51, 234] },
@@ -837,7 +860,7 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
             <div className="px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
               <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <span>🔗</span> Enlaces de Facebook Compartidos
+                <span>🔗</span> Enlaces de Facebook
               </h2>
               <p className="text-sm text-gray-500 mt-1">
                 Enlaces agrupados por usuario en el rango de fechas seleccionado
@@ -854,7 +877,8 @@ export default function AdminDashboard() {
                     <div>
                       <p className="font-semibold text-gray-900">{u.userName}</p>
                       <p className="text-sm text-gray-500">
-                        {u.links.length} enlace(s)
+                        {u.links.filter((l) => l.kind === "post").length} post(s) propio(s) ·{" "}
+                        {u.links.filter((l) => l.kind === "comment").length} post(s) comentado(s)
                       </p>
                     </div>
                     <button
@@ -891,27 +915,45 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            <div className="overflow-y-auto p-6 space-y-3">
-              {facebookLinks
-                .filter((l) => l.userId === linksModalUser.id)
-                .map((item, index) => (
-                  <div
-                    key={`${item.userId}-${index}`}
-                    className="p-4 bg-gray-50 rounded-lg border border-gray-200"
-                  >
-                    <span className="text-xs text-gray-500 block mb-1">
-                      {new Date(item.date).toLocaleDateString("es-ES")}
-                    </span>
-                    <a
-                      href={item.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 hover:underline break-all text-sm"
-                    >
-                      {item.link}
-                    </a>
+            <div className="overflow-y-auto p-6 space-y-6">
+              {([
+                { kind: "post", title: "📝 Posts propios" },
+                { kind: "comment", title: "💬 Posts comentados" },
+              ] as const).map((section) => {
+                const items = facebookLinks.filter(
+                  (l) => l.userId === linksModalUser.id && l.kind === section.kind
+                );
+
+                return (
+                  <div key={section.kind} className="space-y-3">
+                    <h4 className="text-sm font-bold text-gray-700">
+                      {section.title} ({items.length})
+                    </h4>
+                    {items.length > 0 ? (
+                      items.map((item, index) => (
+                        <div
+                          key={`${section.kind}-${index}`}
+                          className="p-4 bg-gray-50 rounded-lg border border-gray-200"
+                        >
+                          <span className="text-xs text-gray-500 block mb-1">
+                            {new Date(item.date).toLocaleDateString("es-ES")}
+                          </span>
+                          <a
+                            href={item.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 hover:underline break-all text-sm"
+                          >
+                            {item.link}
+                          </a>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-400">Sin enlaces</p>
+                    )}
                   </div>
-                ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1065,7 +1107,7 @@ export default function AdminDashboard() {
               {editingLog && editingLog.fbOwnPostsLinks.length > 0 && (
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-700">
-                    Enlaces ya registrados
+                    Enlaces de posts ya registrados
                   </label>
                   <div className="space-y-1">
                     {editingLog.fbOwnPostsLinks.map((link, i) => (
@@ -1095,6 +1137,44 @@ export default function AdminDashboard() {
                       placeholder="https://facebook.com/..."
                       value={newPostLinks[i] || ""}
                       onChange={(e) => handleNewPostLinkChange(i, e.target.value)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {editingLog && editingLog.fbCommentLinks.length > 0 && (
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    Enlaces de posts comentados ya registrados
+                  </label>
+                  <div className="space-y-1">
+                    {editingLog.fbCommentLinks.map((link, i) => (
+                      <a
+                        key={i}
+                        href={link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-xs text-blue-600 hover:underline break-all"
+                      >
+                        {link}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {extraCommentsCount > 0 && (
+                <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <label className="block text-xs font-semibold text-amber-900">
+                    Aumentaste FB Comentarios en {extraCommentsCount} — agrega {extraCommentsCount === 1 ? "el enlace del post comentado" : "los enlaces de los posts comentados"} (opcional)
+                  </label>
+                  {Array.from({ length: extraCommentsCount }).map((_, i) => (
+                    <input
+                      key={i}
+                      type="url"
+                      placeholder="https://facebook.com/..."
+                      value={newCommentLinks[i] || ""}
+                      onChange={(e) => handleNewCommentLinkChange(i, e.target.value)}
                     />
                   ))}
                 </div>

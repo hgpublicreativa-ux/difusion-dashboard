@@ -18,6 +18,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
     fbOwnPostsCreated: "",
     fbOwnPostsLinks: [""],
     fbCommentsMade: "",
+    fbCommentLinks: [""],
     fbGroupsShared: "",
     fbNewGroupsJoined: "",
     whatsappFiles: [] as File[],
@@ -67,26 +68,27 @@ export default function UserForm({ userName, userId }: UserFormProps) {
     }));
   };
 
-  const handleFbLinksChange = (index: number, value: string) => {
-    const newLinks = [...formData.fbOwnPostsLinks];
-    newLinks[index] = value;
+  type LinkField = "fbOwnPostsLinks" | "fbCommentLinks";
+
+  const handleFbLinksChange = (field: LinkField, index: number, value: string) => {
+    setFormData((prev) => {
+      const newLinks = [...prev[field]];
+      newLinks[index] = value;
+      return { ...prev, [field]: newLinks };
+    });
+  };
+
+  const addFbLinkField = (field: LinkField) => {
     setFormData((prev) => ({
       ...prev,
-      fbOwnPostsLinks: newLinks,
+      [field]: [...prev[field], ""],
     }));
   };
 
-  const addFbLinkField = () => {
+  const removeFbLinkField = (field: LinkField, index: number) => {
     setFormData((prev) => ({
       ...prev,
-      fbOwnPostsLinks: [...prev.fbOwnPostsLinks, ""],
-    }));
-  };
-
-  const removeFbLinkField = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      fbOwnPostsLinks: prev.fbOwnPostsLinks.filter((_, i) => i !== index),
+      [field]: prev[field].filter((_, i) => i !== index),
     }));
   };
 
@@ -152,6 +154,13 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         }
       });
 
+      // Add links of the posts the member commented on
+      formData.fbCommentLinks.forEach((link) => {
+        if (link.trim()) {
+          form.append("fbCommentLinks", link);
+        }
+      });
+
       // Add WhatsApp files
       formData.whatsappFiles.forEach((file) => {
         form.append("whatsappFiles", file);
@@ -185,6 +194,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         fbOwnPostsCreated: "",
         fbOwnPostsLinks: [""],
         fbCommentsMade: "",
+        fbCommentLinks: [""],
         fbGroupsShared: "",
         fbNewGroupsJoined: "",
         whatsappFiles: [],
@@ -319,13 +329,13 @@ export default function UserForm({ userName, userId }: UserFormProps) {
                   <input
                     type="url"
                     value={link}
-                    onChange={(e) => handleFbLinksChange(index, e.target.value)}
+                    onChange={(e) => handleFbLinksChange("fbOwnPostsLinks", index, e.target.value)}
                     placeholder="https://facebook.com/..."
                   />
                   {formData.fbOwnPostsLinks.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeFbLinkField(index)}
+                      onClick={() => removeFbLinkField("fbOwnPostsLinks", index)}
                       className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium transition-colors"
                     >
                       ✕
@@ -335,7 +345,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
               ))}
               <button
                 type="button"
-                onClick={addFbLinkField}
+                onClick={() => addFbLinkField("fbOwnPostsLinks")}
                 className="mt-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 font-medium transition-all"
               >
                 + Agregar Enlace
@@ -387,6 +397,37 @@ export default function UserForm({ userName, userId }: UserFormProps) {
                   required
                 />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-blue-900 mb-2">
+                Enlaces de Posts Comentados
+              </label>
+              {formData.fbCommentLinks.map((link, index) => (
+                <div key={index} className="flex gap-2 mb-2">
+                  <input
+                    type="url"
+                    value={link}
+                    onChange={(e) => handleFbLinksChange("fbCommentLinks", index, e.target.value)}
+                    placeholder="https://facebook.com/..."
+                  />
+                  {formData.fbCommentLinks.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeFbLinkField("fbCommentLinks", index)}
+                      className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium transition-colors"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addFbLinkField("fbCommentLinks")}
+                className="mt-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 font-medium transition-all"
+              >
+                + Agregar Enlace
+              </button>
             </div>
           </div>
         </div>

@@ -205,11 +205,13 @@ export async function updateActivityLog(
     fbNewGroupsJoined: number;
     observations?: string | null;
     newPostLinks?: string[];
+    newCommentLinks?: string[];
   }
 ) {
   try {
-    const { newPostLinks, ...rest } = data;
+    const { newPostLinks, newCommentLinks, ...rest } = data;
     const cleanLinks = (newPostLinks || []).filter((l) => l.trim() !== "");
+    const cleanCommentLinks = (newCommentLinks || []).filter((l) => l.trim() !== "");
 
     const updated = await prisma.activityLog.update({
       where: { id },
@@ -217,6 +219,9 @@ export async function updateActivityLog(
         ...rest,
         ...(cleanLinks.length > 0 && {
           fbOwnPostsLinks: { push: cleanLinks },
+        }),
+        ...(cleanCommentLinks.length > 0 && {
+          fbCommentLinks: { push: cleanCommentLinks },
         }),
       },
     });
@@ -240,7 +245,10 @@ export async function getFacebookLinksByDateRange(
           ...(startDate && { gte: startDate }),
           ...(endDate && { lte: endDate }),
         },
-        fbOwnPostsLinks: { isEmpty: false },
+        OR: [
+          { fbOwnPostsLinks: { isEmpty: false } },
+          { fbCommentLinks: { isEmpty: false } },
+        ],
       },
       include: {
         user: true,
@@ -250,14 +258,22 @@ export async function getFacebookLinksByDateRange(
       },
     });
 
-    const result = logs.flatMap((log) =>
-      log.fbOwnPostsLinks.map((link) => ({
+    const result = logs.flatMap((log) => [
+      ...log.fbOwnPostsLinks.map((link) => ({
         userId: log.userId,
         userName: log.user.name,
         date: log.date,
         link,
-      }))
-    );
+        kind: "post" as const,
+      })),
+      ...log.fbCommentLinks.map((link) => ({
+        userId: log.userId,
+        userName: log.user.name,
+        date: log.date,
+        link,
+        kind: "comment" as const,
+      })),
+    ]);
 
     return { success: true, data: result };
   } catch (error) {
