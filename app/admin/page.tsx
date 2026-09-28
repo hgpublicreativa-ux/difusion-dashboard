@@ -1,4 +1,5 @@
 import AdminDashboard from "@/components/AdminDashboard";
+import LogoutButton from "@/components/LogoutButton";
 
 export default function AdminPage() {
   return (
@@ -33,6 +34,7 @@ export default function AdminPage() {
               >
                 👥 Usuarios
               </a>
+              <LogoutButton />
             </div>
           </div>
         </div>

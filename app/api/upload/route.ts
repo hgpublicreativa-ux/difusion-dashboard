@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createUserFolderStructure, uploadFileToFolder } from "@/lib/drive";
 import { prisma } from "@/lib/db";
+import { SESSION_COOKIE, verifySession } from "@/lib/session";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +16,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
+      );
+    }
+
+    // Members can only submit activity for themselves
+    const session = await verifySession(request.cookies.get(SESSION_COOKIE)?.value);
+    if (session?.role !== "USER" || session.userId !== userId) {
+      return NextResponse.json(
+        { error: "Sesión expirada. Vuelve a ingresar con tu clave." },
+        { status: 401 }
       );
     }
 

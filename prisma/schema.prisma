@@ -17,8 +17,10 @@ model User {
   password      String
   role          Role     @default(USER)
   driveFolderUrl String?
+  phone          String?
 
   activityLogs ActivityLog[]
+  phoneChanges PhoneChange[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -74,4 +76,19 @@ model ActivityLog {
   @@index([userId])
   @@index([date])
   @@index([campaignName])
+}
+
+// History of phone numbers assigned to a user by the admin
+model PhoneChange {
+  id        String   @id @default(cuid())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  oldPhone  String?
+  newPhone  String
+
+  changedAt DateTime @default(now())
+
+  @@index([userId])
 }

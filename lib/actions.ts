@@ -3,15 +3,19 @@
 import { prisma } from "./db";
 import { hash } from "bcryptjs";
 import { Role } from "@prisma/client";
+import { requireAdmin } from "./auth";
 
 export async function createUser(
   name: string,
   email: string,
   password: string,
-  role: Role = "USER"
+  role: Role = "USER",
+  phone?: string
 ) {
   try {
+    await requireAdmin();
     const hashedPassword = await hash(password, 10);
+    const cleanPhone = phone?.trim() || null;
 
     const user = await prisma.user.create({
       data: {
@@ -19,6 +23,11 @@ export async function createUser(
         email,
         password: hashedPassword,
         role,
+        phone: cleanPhone,
+        // Record the initial assignment so the history starts at creation
+        ...(cleanPhone && {
+          phoneChanges: { create: { oldPhone: null, newPhone: cleanPhone } },
+        }),
       },
     });
 
@@ -34,6 +43,7 @@ export async function getActivityLogsByDateRange(
   endDate?: Date
 ) {
   try {
+    await requireAdmin();
     const logs = await prisma.activityLog.findMany({
       where: {
         date: {
@@ -61,6 +71,7 @@ export async function getAggregatedByUser(
   endDate?: Date
 ) {
   try {
+    await requireAdmin();
     const aggregated = await prisma.activityLog.groupBy({
       by: ["userId"],
       where: {
@@ -162,6 +173,7 @@ export async function getObservationsByUser(
   endDate?: Date
 ) {
   try {
+    await requireAdmin();
     const logs = await prisma.activityLog.findMany({
       where: {
         userId,
@@ -221,6 +233,7 @@ export async function getFacebookLinksByDateRange(
   endDate?: Date
 ) {
   try {
+    await requireAdmin();
     const logs = await prisma.activityLog.findMany({
       where: {
         date: {
@@ -255,6 +268,7 @@ export async function getFacebookLinksByDateRange(
 
 export async function getUserForActivityLog(userId: string) {
   try {
+    await requireAdmin();
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -268,8 +282,19 @@ export async function getUserForActivityLog(userId: string) {
 
 export async function getAllUsers() {
   try {
+    await requireAdmin();
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phone: true,
+        driveFolderUrl: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     return { success: true, data: users };
@@ -281,6 +306,7 @@ export async function getAllUsers() {
 
 export async function deleteUser(userId: string) {
   try {
+    await requireAdmin();
     await prisma.user.delete({
       where: { id: userId },
     });
@@ -289,5 +315,69 @@ export async function deleteUser(userId: string) {
   } catch (error) {
     console.error("Error deleting user:", error);
     return { success: false, error: "Failed to delete user" };
+  }
+}
+
+export async function updateUserPhone(userId: string, newPhone: string) {
+  try {
+    await requireAdmin();
+    const cleanPhone = newPhone.trim();
+    if (!cleanPhone) {
+      return { success: false, error: "El número no puede estar vacío" };
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return { success: false, error: "Usuario no encontrado" };
+    }
+    if (user.phone === cleanPhone) {
+      return { success: false, error: "Es el mismo número actual" };
+    }
+
+    const [updated] = await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { phone: cleanPhone },
+      }),
+      prisma.phoneChange.create({
+        data: { userId, oldPhone: user.phone, newPhone: cleanPhone },
+      }),
+    ]);
+
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error("Error updating phone:", error);
+    return { success: false, error: "Failed to update phone" };
+  }
+}
+
+export async function getPhoneHistory(userId: string) {
+  try {
+    await requireAdmin();
+    const history = await prisma.phoneChange.findMany({
+      where: { userId },
+      orderBy: { changedAt: "desc" },
+    });
+
+    return { success: true, data: history };
+  } catch (error) {
+    console.error("Error fetching phone history:", error);
+    return { success: false, error: "Failed to fetch phone history" };
+  }
+}
+
+// Public list shown on the member login screen: only id and name
+export async function getUserDirectory() {
+  try {
+    const users = await prisma.user.findMany({
+      where: { role: "USER" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    });
+
+    return { success: true, data: users };
+  } catch (error) {
+    console.error("Error fetching user directory:", error);
+    return { success: false, error: "Failed to fetch users" };
   }
 }
