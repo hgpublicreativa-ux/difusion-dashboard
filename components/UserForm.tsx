@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { ecuadorToday } from "@/lib/dates";
 
 interface UserFormProps {
   userName: string;
@@ -12,7 +13,7 @@ const CAMPAIGN_NAME = "Difusión General";
 export default function UserForm({ userName, userId }: UserFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split("T")[0],
+    date: ecuadorToday(),
     whatsappGroupsReached: "",
     whatsappMessagesPerGroup: "",
     whatsappPeopleReached: "",
@@ -191,7 +192,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
 
       // Reset form
       setFormData({
-        date: new Date().toISOString().split("T")[0],
+        date: ecuadorToday(),
         whatsappGroupsReached: "",
         whatsappMessagesPerGroup: "",
         whatsappPeopleReached: "",

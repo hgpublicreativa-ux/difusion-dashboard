@@ -4,6 +4,7 @@ import { prisma } from "./db";
 import { hash } from "bcryptjs";
 import { Role } from "@prisma/client";
 import { requireAdmin } from "./auth";
+import { ecuadorTodayRange } from "./dates";
 
 export async function createUser(
   name: string,
@@ -92,10 +93,7 @@ export async function getAggregatedByUser(
     });
 
     // Also aggregate just today's entries, regardless of the date filter
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    const { start: todayStart, end: todayEnd } = ecuadorTodayRange();
 
     const todayAggregated = await prisma.activityLog.groupBy({
       by: ["userId"],

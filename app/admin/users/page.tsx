@@ -11,6 +11,7 @@ import {
 import type { User, PhoneChange } from "@prisma/client";
 import { setUserPassword } from "@/lib/auth";
 import AdminNav from "@/components/AdminNav";
+import { formatDateEc, formatDateTimeEc } from "@/lib/dates";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -367,7 +368,7 @@ export default function UsersPage() {
                           </span>
                         </td>
                         <td className="px-3 sm:px-6 py-4 text-gray-700">
-                          {new Date(user.createdAt).toLocaleDateString("es-ES")}
+                          {formatDateEc(user.createdAt)}
                         </td>
                         <td className="px-3 sm:px-6 py-4">
                           <div className="flex flex-wrap justify-center gap-2 min-w-[180px]">
@@ -599,7 +600,7 @@ export default function UsersPage() {
                     {phoneHistory.map((h) => (
                       <tr key={h.id}>
                         <td className="px-3 sm:px-4 py-2 text-gray-700 whitespace-nowrap">
-                          {new Date(h.changedAt).toLocaleString("es-ES")}
+                          {formatDateTimeEc(h.changedAt)}
                         </td>
                         <td className="px-3 sm:px-4 py-2 text-gray-500">
                           {h.oldPhone || "—"}

@@ -10,6 +10,7 @@ import {
 } from "@/lib/actions";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { formatDay, formatDateTimeEc } from "@/lib/dates";
 
 interface UserTotals {
   whatsappGroupsReached: number;
@@ -307,7 +308,7 @@ export default function AdminDashboard() {
     doc.setTextColor(80, 80, 80);
     doc.text(`Rango de fechas: ${rangeLabel}`, 14, 26);
     doc.text(
-      `Generado: ${new Date().toLocaleDateString("es-ES")} ${new Date().toLocaleTimeString("es-ES")}`,
+      `Generado: ${formatDateTimeEc(new Date())} (hora de Ecuador)`,
       14,
       32
     );
@@ -397,7 +398,7 @@ export default function AdminDashboard() {
         head: [["Usuario", "Fecha", "Tipo", "Enlace"]],
         body: facebookLinks.map((l) => [
           l.userName,
-          new Date(l.date).toLocaleDateString("es-ES"),
+          formatDay(l.date),
           l.kind === "post" ? "Post propio" : "Comentado",
           l.link,
         ]),
@@ -820,7 +821,7 @@ export default function AdminDashboard() {
                 dailyLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50">
                     <td className="px-3 sm:px-6 py-3 text-gray-700 whitespace-nowrap">
-                      {new Date(log.date).toLocaleDateString("es-ES")}
+                      {formatDay(log.date)}
                     </td>
                     <td className="px-3 sm:px-6 py-3 font-medium text-gray-900">
                       {log.user.name}
@@ -968,7 +969,7 @@ export default function AdminDashboard() {
                 facebookLinks
                   .filter((l) => l.userId === linksModalUser.id)
                   .forEach((l) => {
-                    const key = new Date(l.date).toLocaleDateString("es-ES", { timeZone: "UTC" });
+                    const key = formatDay(l.date);
                     byDate.set(key, [...(byDate.get(key) || []), l]);
                   });
 
@@ -1074,7 +1075,7 @@ export default function AdminDashboard() {
                     className="p-4 bg-red-50 rounded-lg border border-red-200"
                   >
                     <span className="text-xs text-red-700 font-semibold block mb-1">
-                      {new Date(obs.date).toLocaleDateString("es-ES")}
+                      {formatDay(obs.date)}
                     </span>
                     <p className="text-sm text-gray-800 whitespace-pre-wrap">
                       {obs.observations}
@@ -1109,7 +1110,7 @@ export default function AdminDashboard() {
 
             <div className="overflow-y-auto p-6 space-y-4">
               <p className="text-sm text-gray-500">
-                {editingLog.user.name} · {new Date(editingLog.date).toLocaleDateString("es-ES")}
+                {editingLog.user.name} · {formatDay(editingLog.date)}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
