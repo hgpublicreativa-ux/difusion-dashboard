@@ -24,11 +24,13 @@ input[type="text"],
 input[type="email"],
 input[type="password"],
 input[type="number"],
+input[type="tel"],
+input[type="url"],
 input[type="date"],
 input[type="file"],
 textarea,
 select {
-  @apply px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900;
+  @apply w-full min-w-0 px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900;
   @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:border-transparent;
   @apply transition-all duration-200;
   @apply placeholder-gray-400;

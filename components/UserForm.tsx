@@ -269,7 +269,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             <span>💬</span> Métricas WhatsApp
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-green-900">
                 Grupos Alcanzados
@@ -371,7 +371,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-blue-900">
                   Comentarios
