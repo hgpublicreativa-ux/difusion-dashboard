@@ -273,7 +273,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
 
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-green-900">
-                Mensajes por Grupo
+                Mensajes Enviados en el Día
               </label>
               <input
                 type="number"

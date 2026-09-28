@@ -229,13 +229,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const calculateTotalMessages = (
-    groupsReached: number,
-    messagesPerGroup: number
-  ): number => {
-    return groupsReached * messagesPerGroup;
-  };
-
   const formatNumber = (num: number): string => {
     return new Intl.NumberFormat("es-ES").format(num);
   };
@@ -294,12 +287,7 @@ export default function AdminDashboard() {
       0
     );
     const totalMessages = userAggregates.reduce(
-      (sum, u) =>
-        sum +
-        calculateTotalMessages(
-          u.totals.whatsappGroupsReached,
-          u.totals.whatsappMessagesPerGroup
-        ),
+      (sum, u) => sum + u.totals.whatsappMessagesPerGroup,
       0
     );
     const totalFbPosts = userAggregates.reduce(
@@ -338,8 +326,7 @@ export default function AdminDashboard() {
         [
           "Usuario",
           "WA Grupos",
-          "WA Msj/Grupo",
-          "WA Total Msj",
+          "WA Mensajes",
           "FB Posts",
           "FB Comentarios",
           "FB Grupos Comp.",
@@ -350,17 +337,6 @@ export default function AdminDashboard() {
         u.user.name,
         `${formatNumber(u.totals.whatsappGroupsReached)} (hoy: ${formatNumber(u.todayTotals.whatsappGroupsReached)})`,
         `${formatNumber(u.totals.whatsappMessagesPerGroup)} (hoy: ${formatNumber(u.todayTotals.whatsappMessagesPerGroup)})`,
-        `${formatNumber(
-          calculateTotalMessages(
-            u.totals.whatsappGroupsReached,
-            u.totals.whatsappMessagesPerGroup
-          )
-        )} (hoy: ${formatNumber(
-          calculateTotalMessages(
-            u.todayTotals.whatsappGroupsReached,
-            u.todayTotals.whatsappMessagesPerGroup
-          )
-        )})`,
         `${formatNumber(u.totals.fbOwnPostsCreated)} (hoy: ${formatNumber(u.todayTotals.fbOwnPostsCreated)})`,
         `${formatNumber(u.totals.fbCommentsMade)} (hoy: ${formatNumber(u.todayTotals.fbCommentsMade)})`,
         `${formatNumber(u.totals.fbGroupsShared)} (hoy: ${formatNumber(u.todayTotals.fbGroupsShared)})`,
@@ -478,12 +454,7 @@ export default function AdminDashboard() {
         const totals = userAggregates.reduce(
           (acc, user) => ({
             groups: acc.groups + user.totals.whatsappGroupsReached,
-            messages:
-              acc.messages +
-              calculateTotalMessages(
-                user.totals.whatsappGroupsReached,
-                user.totals.whatsappMessagesPerGroup
-              ),
+            messages: acc.messages + user.totals.whatsappMessagesPerGroup,
             fbPosts: acc.fbPosts + user.totals.fbOwnPostsCreated,
             fbComments: acc.fbComments + user.totals.fbCommentsMade,
             fbGroupsShared: acc.fbGroupsShared + user.totals.fbGroupsShared,
@@ -636,10 +607,7 @@ export default function AdminDashboard() {
                   WA Groups
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Mensajes/Grupo
-                </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Total Mensajes Enviados
+                  WA Mensajes Enviados
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
                   FB Posts
@@ -662,15 +630,6 @@ export default function AdminDashboard() {
             <tbody className="divide-y divide-gray-200">
               {userAggregates.length > 0 ? (
                 userAggregates.map((user) => {
-                  const totalMessages = calculateTotalMessages(
-                    user.totals.whatsappGroupsReached,
-                    user.totals.whatsappMessagesPerGroup
-                  );
-                  const todayMessages = calculateTotalMessages(
-                    user.todayTotals.whatsappGroupsReached,
-                    user.todayTotals.whatsappMessagesPerGroup
-                  );
-
                   return (
                     <tr key={user.user.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 font-medium text-gray-900">
@@ -696,10 +655,6 @@ export default function AdminDashboard() {
                       <MetricCell
                         today={user.todayTotals.whatsappMessagesPerGroup}
                         total={user.totals.whatsappMessagesPerGroup}
-                      />
-                      <MetricCell
-                        today={todayMessages}
-                        total={totalMessages}
                         highlight
                       />
                       <MetricCell
@@ -739,7 +694,7 @@ export default function AdminDashboard() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                     No data available for the selected date range
                   </td>
                 </tr>
@@ -774,7 +729,7 @@ export default function AdminDashboard() {
                   WA Grupos
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Msj/Grupo
+                  WA Mensajes
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
                   FB Posts
@@ -1042,7 +997,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-700">
-                    WA Mensajes/Grupo
+                    WA Mensajes Enviados
                   </label>
                   <input
                     type="number"
