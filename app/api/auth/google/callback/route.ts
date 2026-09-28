@@ -8,11 +8,11 @@ export async function GET(request: NextRequest) {
     const error = request.nextUrl.searchParams.get("error");
 
     if (error) {
-      return NextResponse.json({ error: `Google returned: ${error}` }, { status: 400 });
+      return NextResponse.json({ error: `Google devolvió: ${error}` }, { status: 400 });
     }
 
     if (!code) {
-      return NextResponse.json({ error: "Missing authorization code" }, { status: 400 });
+      return NextResponse.json({ error: "Falta el código de autorización" }, { status: 400 });
     }
 
     const oauth2Client = new google.auth.OAuth2(
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("OAuth callback error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "OAuth callback failed" },
+      { error: error instanceof Error ? error.message : "Falló la conexión con Google" },
       { status: 500 }
     );
   }

@@ -10,7 +10,7 @@ import {
 } from "@/lib/actions";
 import type { User, PhoneChange } from "@prisma/client";
 import { setUserPassword } from "@/lib/auth";
-import LogoutButton from "@/components/LogoutButton";
+import AdminNav from "@/components/AdminNav";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -52,10 +52,10 @@ export default function UsersPage() {
       if (result.success) {
         setUsers(result.data as User[]);
       } else {
-        setError(result.error || "Failed to load users");
+        setError(result.error || "No se pudieron cargar los usuarios");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
     } finally {
       setIsLoading(false);
     }
@@ -77,13 +77,13 @@ export default function UsersPage() {
 
     try {
       if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
-        setError("All fields are required");
+        setError("Nombre, email y contraseña son obligatorios");
         setIsLoading(false);
         return;
       }
 
       if (!formData.email.includes("@")) {
-        setError("Invalid email format");
+        setError("El email no tiene un formato válido");
         setIsLoading(false);
         return;
       }
@@ -97,14 +97,14 @@ export default function UsersPage() {
       );
 
       if (result.success) {
-        setSuccess("User created successfully!");
+        setSuccess("¡Usuario creado correctamente!");
         setFormData({ name: "", email: "", password: "", phone: "" });
         await loadUsers();
       } else {
-        setError(result.error || "Failed to create user");
+        setError(result.error || "No se pudo crear el usuario (¿el email ya está registrado?)");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
     } finally {
       setIsLoading(false);
     }
@@ -132,7 +132,7 @@ export default function UsersPage() {
         setPhoneError(result.error || "No se pudo actualizar el número");
       }
     } catch (err) {
-      setPhoneError(err instanceof Error ? err.message : "An error occurred");
+      setPhoneError(err instanceof Error ? err.message : "Ocurrió un error");
     } finally {
       setIsSavingPhone(false);
     }
@@ -153,7 +153,7 @@ export default function UsersPage() {
         setPasswordError(result.error || "No se pudo cambiar la clave");
       }
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : "An error occurred");
+      setPasswordError(err instanceof Error ? err.message : "Ocurrió un error");
     } finally {
       setIsSavingPassword(false);
     }
@@ -188,10 +188,10 @@ export default function UsersPage() {
         setUserToDelete(null);
         await loadUsers();
       } else {
-        setError(result.error || "Failed to delete user");
+        setError(result.error || "No se pudo eliminar el usuario");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
     } finally {
       setIsDeleting(false);
     }
@@ -199,51 +199,17 @@ export default function UsersPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <nav className="bg-white shadow-md border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">D</span>
-              </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Difusión Dashboard
-              </h1>
-            </div>
-            <div className="flex gap-1">
-              <a
-                href="/"
-                className="px-4 py-2 text-gray-700 font-semibold hover:bg-blue-50 rounded-lg transition-colors"
-              >
-                🏠 Inicio
-              </a>
-              <a
-                href="/admin"
-                className="px-4 py-2 text-gray-700 font-semibold hover:bg-blue-50 rounded-lg transition-colors"
-              >
-                📊 Dashboard
-              </a>
-              <a
-                href="/admin/users"
-                className="px-4 py-2 text-gray-700 font-semibold hover:bg-blue-50 rounded-lg transition-colors"
-              >
-                👥 Usuarios
-              </a>
-              <LogoutButton />
-            </div>
-          </div>
-        </div>
-      </nav>
+      <AdminNav />
 
-      <main className="max-w-4xl mx-auto p-6">
+      <main className="max-w-5xl mx-auto p-4 sm:p-6">
         <div className="space-y-8">
           {/* Create User Form */}
-          <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
+          <div className="bg-white rounded-xl shadow-lg p-5 sm:p-8 border border-gray-100">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <span className="text-white text-xl">➕</span>
               </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Crear Nuevo Usuario
               </h2>
             </div>
@@ -345,32 +311,32 @@ export default function UsersPage() {
 
           {/* Users List */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-            <div className="px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <div className="px-3 sm:px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
                 <span>👥</span> Usuarios Registrados ({users.length})
               </h2>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-100 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-700">
-                      Name
+                    <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-700">
+                      Nombre
                     </th>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-700">
+                    <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-700">
                       Email
                     </th>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-700">
+                    <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-700">
                       Teléfono
                     </th>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-700">
-                      Role
+                    <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-700">
+                      Rol
                     </th>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-700">
-                      Created At
+                    <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-700">
+                      Creado
                     </th>
-                    <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                    <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                       Acciones
                     </th>
                   </tr>
@@ -380,70 +346,135 @@ export default function UsersPage() {
                   {users.length > 0 ? (
                     users.map((user) => (
                       <tr key={user.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 font-medium text-gray-900">
+                        <td className="px-3 sm:px-6 py-4 font-medium text-gray-900">
                           {user.name}
                         </td>
-                        <td className="px-6 py-4 text-gray-700">
+                        <td className="px-3 sm:px-6 py-4 text-gray-700">
                           {user.email}
                         </td>
-                        <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
+                        <td className="px-3 sm:px-6 py-4 text-gray-700 whitespace-nowrap">
                           {user.phone || (
                             <span className="text-gray-400 italic">Sin asignar</span>
                           )}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 sm:px-6 py-4">
                           <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
                             user.role === "ADMIN"
                               ? "bg-purple-100 text-purple-800"
                               : "bg-blue-100 text-blue-800"
                           }`}>
-                            {user.role}
+                            {user.role === "ADMIN" ? "Administrador" : "Miembro"}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-gray-700">
+                        <td className="px-3 sm:px-6 py-4 text-gray-700">
                           {new Date(user.createdAt).toLocaleDateString("es-ES")}
                         </td>
-                        <td className="px-6 py-4 text-center whitespace-nowrap space-x-2">
-                          <button
-                            onClick={() => openPhoneEditor(user)}
-                            className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors"
-                          >
-                            📱 Cambiar número
-                          </button>
-                          <button
-                            onClick={() => {
-                              setUserToEditPassword(user);
-                              setNewPassword("");
-                              setPasswordError("");
-                            }}
-                            className="px-3 py-1.5 bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg hover:bg-amber-100 border border-amber-200 transition-colors"
-                          >
-                            🔑 Cambiar clave
-                          </button>
-                          <button
-                            onClick={() => openPhoneHistory(user)}
-                            className="px-3 py-1.5 bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-100 border border-gray-200 transition-colors"
-                          >
-                            🕘 Historial
-                          </button>
-                          <button
-                            onClick={() => setUserToDelete(user)}
-                            className="px-3 py-1.5 bg-red-50 text-red-700 text-xs font-semibold rounded-lg hover:bg-red-100 border border-red-200 transition-colors"
-                          >
-                            🗑️ Eliminar
-                          </button>
+                        <td className="px-3 sm:px-6 py-4">
+                          <div className="flex flex-wrap justify-center gap-2 min-w-[180px]">
+                            <button
+                              onClick={() => openPhoneEditor(user)}
+                              className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors"
+                            >
+                              📱 Cambiar número
+                            </button>
+                            <button
+                              onClick={() => {
+                                setUserToEditPassword(user);
+                                setNewPassword("");
+                                setPasswordError("");
+                              }}
+                              className="px-3 py-1.5 bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg hover:bg-amber-100 border border-amber-200 transition-colors"
+                            >
+                              🔑 Cambiar clave
+                            </button>
+                            <button
+                              onClick={() => openPhoneHistory(user)}
+                              className="px-3 py-1.5 bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-100 border border-gray-200 transition-colors"
+                            >
+                              🕘 Historial
+                            </button>
+                            <button
+                              onClick={() => setUserToDelete(user)}
+                              className="px-3 py-1.5 bg-red-50 text-red-700 text-xs font-semibold rounded-lg hover:bg-red-100 border border-red-200 transition-colors"
+                            >
+                              🗑️ Eliminar
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                        No users created yet
+                      <td colSpan={6} className="px-3 sm:px-6 py-8 text-center text-gray-500">
+                        Aún no hay usuarios creados
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile: one card per user instead of the wide table */}
+            <div className="md:hidden divide-y divide-gray-200">
+              {users.length > 0 ? (
+                users.map((user) => (
+                  <div key={user.id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-900">{user.name}</p>
+                        <p className="text-sm text-gray-600 break-all">{user.email}</p>
+                        <p className="text-sm text-gray-600">
+                          📱{" "}
+                          {user.phone || (
+                            <span className="text-gray-400 italic">Sin asignar</span>
+                          )}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 px-2.5 py-1 text-xs font-semibold rounded-full ${
+                          user.role === "ADMIN"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {user.role === "ADMIN" ? "Administrador" : "Miembro"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => openPhoneEditor(user)}
+                        className="px-3 py-2 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-200"
+                      >
+                        📱 Cambiar número
+                      </button>
+                      <button
+                        onClick={() => {
+                          setUserToEditPassword(user);
+                          setNewPassword("");
+                          setPasswordError("");
+                        }}
+                        className="px-3 py-2 bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg border border-amber-200"
+                      >
+                        🔑 Cambiar clave
+                      </button>
+                      <button
+                        onClick={() => openPhoneHistory(user)}
+                        className="px-3 py-2 bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg border border-gray-200"
+                      >
+                        🕘 Historial
+                      </button>
+                      <button
+                        onClick={() => setUserToDelete(user)}
+                        className="px-3 py-2 bg-red-50 text-red-700 text-xs font-semibold rounded-lg border border-red-200"
+                      >
+                        🗑️ Eliminar
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="p-6 text-center text-gray-500">Aún no hay usuarios creados</p>
+              )}
             </div>
           </div>
         </div>
@@ -452,7 +483,7 @@ export default function UsersPage() {
       {/* Change Phone Modal */}
       {userToEditPhone && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-gray-100">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 max-w-md w-full border border-gray-100">
             <h3 className="text-xl font-bold text-gray-900 mb-1">
               📱 Cambiar número
             </h3>
@@ -501,7 +532,7 @@ export default function UsersPage() {
       {/* Change Password Modal */}
       {userToEditPassword && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-gray-100">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 max-w-md w-full border border-gray-100">
             <h3 className="text-xl font-bold text-gray-900 mb-1">
               🔑 Cambiar clave
             </h3>
@@ -546,7 +577,7 @@ export default function UsersPage() {
       {/* Phone History Modal */}
       {historyUser && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full border border-gray-100">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 max-w-lg w-full border border-gray-100">
             <h3 className="text-xl font-bold text-gray-900 mb-1">
               🕘 Historial de números
             </h3>
@@ -559,18 +590,18 @@ export default function UsersPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-100 sticky top-0">
                     <tr>
-                      <th className="px-4 py-2 text-left font-semibold text-gray-700">Fecha</th>
-                      <th className="px-4 py-2 text-left font-semibold text-gray-700">Anterior</th>
-                      <th className="px-4 py-2 text-left font-semibold text-gray-700">Nuevo</th>
+                      <th className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-700">Fecha</th>
+                      <th className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-700">Anterior</th>
+                      <th className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-700">Nuevo</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {phoneHistory.map((h) => (
                       <tr key={h.id}>
-                        <td className="px-4 py-2 text-gray-700 whitespace-nowrap">
+                        <td className="px-3 sm:px-4 py-2 text-gray-700 whitespace-nowrap">
                           {new Date(h.changedAt).toLocaleString("es-ES")}
                         </td>
-                        <td className="px-4 py-2 text-gray-500">
+                        <td className="px-3 sm:px-4 py-2 text-gray-500">
                           {h.oldPhone || "—"}
                         </td>
                         <td className="px-4 py-2 font-semibold text-gray-900">
@@ -600,7 +631,7 @@ export default function UsersPage() {
       {/* Delete Confirmation Modal */}
       {userToDelete && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-gray-100">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 max-w-md w-full border border-gray-100">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center shrink-0">
                 <span className="text-2xl">⚠️</span>

@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     if (!userId || !userName || !date) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Faltan campos obligatorios" },
         { status: 400 }
       );
     }
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: `Activity logged successfully. ${uploadedCount} files uploaded.`,
+        message: `Se subieron ${uploadedCount} archivo(s)`,
         folderUrl,
         activityLog,
       },
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Failed to process upload",
+          error instanceof Error ? error.message : "No se pudo procesar el envío",
       },
       { status: 500 }
     );

@@ -34,7 +34,7 @@ export async function createUser(
     return { success: true, user };
   } catch (error) {
     console.error("Error creating user:", error);
-    return { success: false, error: "Failed to create user" };
+    return { success: false, error: "No se pudo crear el usuario (¿el email ya está registrado?)" };
   }
 }
 
@@ -62,7 +62,7 @@ export async function getActivityLogsByDateRange(
     return { success: true, data: logs };
   } catch (error) {
     console.error("Error fetching activity logs:", error);
-    return { success: false, error: "Failed to fetch activity logs" };
+    return { success: false, error: "No se pudieron cargar los registros de actividad" };
   }
 }
 
@@ -167,7 +167,7 @@ export async function getAggregatedByUser(
     return { success: true, data: result };
   } catch (error) {
     console.error("Error aggregating by user:", error);
-    return { success: false, error: "Failed to aggregate data" };
+    return { success: false, error: "No se pudieron calcular los totales" };
   }
 }
 
@@ -194,7 +194,7 @@ export async function getObservationsByUser(
     return { success: true, data: logs };
   } catch (error) {
     console.error("Error fetching observations:", error);
-    return { success: false, error: "Failed to fetch observations" };
+    return { success: false, error: "No se pudieron cargar las observaciones" };
   }
 }
 
@@ -234,7 +234,7 @@ export async function updateActivityLog(
     return { success: true, data: updated };
   } catch (error) {
     console.error("Error updating activity log:", error);
-    return { success: false, error: "Failed to update activity log" };
+    return { success: false, error: "No se pudo actualizar el registro" };
   }
 }
 
@@ -283,7 +283,7 @@ export async function getFacebookLinksByDateRange(
     return { success: true, data: result };
   } catch (error) {
     console.error("Error fetching Facebook links:", error);
-    return { success: false, error: "Failed to fetch Facebook links" };
+    return { success: false, error: "No se pudieron cargar los enlaces de Facebook" };
   }
 }
 
@@ -297,7 +297,7 @@ export async function getUserForActivityLog(userId: string) {
     return { success: true, data: user };
   } catch (error) {
     console.error("Error fetching user:", error);
-    return { success: false, error: "Failed to fetch user" };
+    return { success: false, error: "No se pudo cargar el usuario" };
   }
 }
 
@@ -321,7 +321,7 @@ export async function getAllUsers() {
     return { success: true, data: users };
   } catch (error) {
     console.error("Error fetching users:", error);
-    return { success: false, error: "Failed to fetch users" };
+    return { success: false, error: "No se pudieron cargar los usuarios" };
   }
 }
 
@@ -335,7 +335,7 @@ export async function deleteUser(userId: string) {
     return { success: true };
   } catch (error) {
     console.error("Error deleting user:", error);
-    return { success: false, error: "Failed to delete user" };
+    return { success: false, error: "No se pudo eliminar el usuario" };
   }
 }
 
@@ -368,7 +368,7 @@ export async function updateUserPhone(userId: string, newPhone: string) {
     return { success: true, data: updated };
   } catch (error) {
     console.error("Error updating phone:", error);
-    return { success: false, error: "Failed to update phone" };
+    return { success: false, error: "No se pudo actualizar el número" };
   }
 }
 
@@ -383,7 +383,7 @@ export async function getPhoneHistory(userId: string) {
     return { success: true, data: history };
   } catch (error) {
     console.error("Error fetching phone history:", error);
-    return { success: false, error: "Failed to fetch phone history" };
+    return { success: false, error: "No se pudo cargar el historial de números" };
   }
 }
 
@@ -399,6 +399,6 @@ export async function getUserDirectory() {
     return { success: true, data: users };
   } catch (error) {
     console.error("Error fetching user directory:", error);
-    return { success: false, error: "Failed to fetch users" };
+    return { success: false, error: "No se pudieron cargar los usuarios" };
   }
 }

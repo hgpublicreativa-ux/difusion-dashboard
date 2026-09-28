@@ -89,6 +89,8 @@ export default function AdminDashboard() {
 
   // Facebook links per-user modal
   const [linksModalUser, setLinksModalUser] = useState<{ id: string; name: string } | null>(null);
+  // Expanded days in the links accordion; null = default (most recent day open)
+  const [openLinkDates, setOpenLinkDates] = useState<Set<string> | null>(null);
 
   // Edit activity log modal
   const [editingLog, setEditingLog] = useState<DailyLog | null>(null);
@@ -130,22 +132,22 @@ export default function AdminDashboard() {
       if (userResult.success) {
         setUserAggregates(userResult.data as AggregatedUser[]);
       } else {
-        setError(userResult.error || "Failed to load user data");
+        setError(userResult.error || "No se pudieron cargar los datos de usuarios");
       }
 
       if (linksResult.success) {
         setFacebookLinks(linksResult.data as FacebookLink[]);
       } else {
-        setError(linksResult.error || "Failed to load Facebook links");
+        setError(linksResult.error || "No se pudieron cargar los enlaces de Facebook");
       }
 
       if (logsResult.success) {
         setDailyLogs(logsResult.data as unknown as DailyLog[]);
       } else {
-        setError(logsResult.error || "Failed to load daily logs");
+        setError(logsResult.error || "No se pudo cargar el historial diario");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
     } finally {
       setIsLoading(false);
     }
@@ -250,7 +252,7 @@ export default function AdminDashboard() {
         setNewCommentLinks([]);
         await loadData();
       } else {
-        setError(result.error || "Failed to update activity log");
+        setError(result.error || "No se pudo actualizar el registro");
       }
     } finally {
       setIsSavingEdit(false);
@@ -275,7 +277,7 @@ export default function AdminDashboard() {
     total: number;
     highlight?: boolean;
   }) => (
-    <td className="px-6 py-4 text-center">
+    <td className="px-3 sm:px-6 py-4 text-center">
       <p
         className={`font-semibold ${highlight ? "text-green-600" : "text-gray-800"}`}
       >
@@ -414,12 +416,12 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="space-y-8 p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+    <div className="space-y-6 sm:space-y-8 p-4 sm:p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
+      <div className="flex items-center gap-3 mb-2 sm:mb-8">
+        <div className="w-11 h-11 sm:w-14 sm:h-14 shrink-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
           <span className="text-2xl">📊</span>
         </div>
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
           Dashboard Administrativo
         </h1>
       </div>
@@ -435,8 +437,8 @@ export default function AdminDashboard() {
       )}
 
       {/* Date Filter Section */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-        <h2 className="text-2xl font-bold text-gray-900 mb-5 flex items-center gap-2">
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-5 flex items-center gap-2">
           <span>📅</span> Filtrar por Rango de Fechas
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -641,8 +643,8 @@ export default function AdminDashboard() {
 
       {/* Table 1: By User */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-        <div className="px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <div className="px-3 sm:px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
             <span>👥</span> Totales por Usuario
           </h2>
         </div>
@@ -651,31 +653,31 @@ export default function AdminDashboard() {
           <table className="w-full text-sm">
             <thead className="bg-gray-100 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left font-semibold text-gray-700">
-                  User
+                <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-700">
+                  Usuario
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Groups
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
+                  WA Grupos
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   WA Mensajes Enviados
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   WA Personas Alcanzadas
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   FB Posts
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Comments
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
+                  FB Comentarios
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Groups Shared
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
+                  FB Grupos Comp.
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  FB New Groups
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
+                  FB Grupos Nuevos
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   Drive
                 </th>
               </tr>
@@ -686,7 +688,7 @@ export default function AdminDashboard() {
                 userAggregates.map((user) => {
                   return (
                     <tr key={user.user.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 font-medium text-gray-900">
+                      <td className="px-3 sm:px-6 py-4 font-medium text-gray-900">
                         <div className="flex items-center gap-2">
                           <span>{user.user.name}</span>
                           <button
@@ -731,7 +733,7 @@ export default function AdminDashboard() {
                         today={user.todayTotals.fbNewGroupsJoined}
                         total={user.totals.fbNewGroupsJoined}
                       />
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-3 sm:px-6 py-4 text-center">
                         {user.user.driveFolderUrl ? (
                           <a
                             href={user.user.driveFolderUrl}
@@ -752,8 +754,8 @@ export default function AdminDashboard() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
-                    No data available for the selected date range
+                  <td colSpan={9} className="px-3 sm:px-6 py-8 text-center text-gray-500">
+                    No hay datos para el rango de fechas seleccionado
                   </td>
                 </tr>
               )}
@@ -764,8 +766,8 @@ export default function AdminDashboard() {
 
       {/* Table: Daily History (individual reports, one row per user per day) */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-        <div className="px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <div className="px-3 sm:px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
             <span>📆</span> Historial Diario
           </h2>
           <p className="text-sm text-gray-500 mt-1">
@@ -777,37 +779,37 @@ export default function AdminDashboard() {
           <table className="w-full text-sm">
             <thead className="bg-gray-100 border-b border-gray-200 sticky top-0">
               <tr>
-                <th className="px-6 py-3 text-left font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-700">
                   Fecha
                 </th>
-                <th className="px-6 py-3 text-left font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-700">
                   Usuario
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   WA Grupos
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   WA Mensajes
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   WA Personas
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   FB Posts
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Comments
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
+                  FB Comentarios
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   FB Grupos Comp.
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   FB Grupos Nuevos
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   Evidencias
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   Acciones
                 </th>
               </tr>
@@ -817,34 +819,34 @@ export default function AdminDashboard() {
               {dailyLogs.length > 0 ? (
                 dailyLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-3 text-gray-700 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-3 text-gray-700 whitespace-nowrap">
                       {new Date(log.date).toLocaleDateString("es-ES")}
                     </td>
-                    <td className="px-6 py-3 font-medium text-gray-900">
+                    <td className="px-3 sm:px-6 py-3 font-medium text-gray-900">
                       {log.user.name}
                     </td>
-                    <td className="px-6 py-3 text-center text-gray-700">
+                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
                       {formatNumber(log.whatsappGroupsReached)}
                     </td>
-                    <td className="px-6 py-3 text-center text-gray-700">
+                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
                       {formatNumber(log.whatsappMessagesPerGroup)}
                     </td>
-                    <td className="px-6 py-3 text-center text-gray-700">
+                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
                       {formatNumber(log.whatsappPeopleReached)}
                     </td>
-                    <td className="px-6 py-3 text-center text-gray-700">
+                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
                       {formatNumber(log.fbOwnPostsCreated)}
                     </td>
-                    <td className="px-6 py-3 text-center text-gray-700">
+                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
                       {formatNumber(log.fbCommentsMade)}
                     </td>
-                    <td className="px-6 py-3 text-center text-gray-700">
+                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
                       {formatNumber(log.fbGroupsShared)}
                     </td>
-                    <td className="px-6 py-3 text-center text-gray-700">
+                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
                       {formatNumber(log.fbNewGroupsJoined)}
                     </td>
-                    <td className="px-6 py-3 text-center">
+                    <td className="px-3 sm:px-6 py-3 text-center">
                       {log.driveEvidenceFolderUrl ? (
                         <a
                           href={log.driveEvidenceFolderUrl}
@@ -858,7 +860,7 @@ export default function AdminDashboard() {
                         <span className="text-gray-400 text-xs">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-3 text-center">
+                    <td className="px-3 sm:px-6 py-3 text-center">
                       <button
                         onClick={() => handleOpenEditLog(log)}
                         className="px-3 py-1 bg-amber-500 text-white text-xs font-semibold rounded hover:bg-amber-600"
@@ -870,7 +872,7 @@ export default function AdminDashboard() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={11} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={11} className="px-3 sm:px-6 py-8 text-center text-gray-500">
                     No hay registros para el rango de fechas seleccionado
                   </td>
                 </tr>
@@ -899,8 +901,8 @@ export default function AdminDashboard() {
 
         return (
           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-            <div className="px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <div className="px-3 sm:px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
                 <span>🔗</span> Enlaces de Facebook
               </h2>
               <p className="text-sm text-gray-500 mt-1">
@@ -913,7 +915,7 @@ export default function AdminDashboard() {
                 usersWithLinks.map((u) => (
                   <div
                     key={u.userId}
-                    className="px-6 py-4 flex items-center justify-between flex-wrap gap-3"
+                    className="px-4 sm:px-6 py-4 flex items-center justify-between flex-wrap gap-3"
                   >
                     <div>
                       <p className="font-semibold text-gray-900">{u.userName}</p>
@@ -923,7 +925,10 @@ export default function AdminDashboard() {
                       </p>
                     </div>
                     <button
-                      onClick={() => setLinksModalUser({ id: u.userId, name: u.userName })}
+                      onClick={() => {
+                        setOpenLinkDates(null);
+                        setLinksModalUser({ id: u.userId, name: u.userName });
+                      }}
                       className="px-5 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-semibold rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
                     >
                       🔗 Ver Enlaces
@@ -944,7 +949,7 @@ export default function AdminDashboard() {
       {linksModalUser && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col border border-gray-100">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+            <div className="px-3 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <span>🔗</span> Enlaces de {linksModalUser.name}
               </h3>
@@ -956,45 +961,88 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            <div className="overflow-y-auto p-6 space-y-6">
-              {([
-                { kind: "post", title: "📝 Posts propios" },
-                { kind: "comment", title: "💬 Posts comentados" },
-              ] as const).map((section) => {
-                const items = facebookLinks.filter(
-                  (l) => l.userId === linksModalUser.id && l.kind === section.kind
-                );
+            <div className="overflow-y-auto p-4 sm:p-6 space-y-3">
+              {(() => {
+                // Group this user's links by day (links arrive newest first)
+                const byDate = new Map<string, FacebookLink[]>();
+                facebookLinks
+                  .filter((l) => l.userId === linksModalUser.id)
+                  .forEach((l) => {
+                    const key = new Date(l.date).toLocaleDateString("es-ES", { timeZone: "UTC" });
+                    byDate.set(key, [...(byDate.get(key) || []), l]);
+                  });
 
-                return (
-                  <div key={section.kind} className="space-y-3">
-                    <h4 className="text-sm font-bold text-gray-700">
-                      {section.title} ({items.length})
-                    </h4>
-                    {items.length > 0 ? (
-                      items.map((item, index) => (
-                        <div
-                          key={`${section.kind}-${index}`}
-                          className="p-4 bg-gray-50 rounded-lg border border-gray-200"
-                        >
-                          <span className="text-xs text-gray-500 block mb-1">
-                            {new Date(item.date).toLocaleDateString("es-ES")}
+                if (byDate.size === 0) {
+                  return <p className="text-sm text-gray-400">Sin enlaces</p>;
+                }
+
+                // Until the admin toggles something, only the most recent day is open
+                const openDates = openLinkDates ?? new Set([Array.from(byDate.keys())[0]]);
+
+                return Array.from(byDate.entries()).map(([dateLabel, items]) => {
+                  const isOpen = openDates.has(dateLabel);
+                  const posts = items.filter((l) => l.kind === "post");
+                  const comments = items.filter((l) => l.kind === "comment");
+
+                  return (
+                    <div key={dateLabel} className="border border-gray-200 rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => {
+                          const next = new Set(openDates);
+                          if (isOpen) next.delete(dateLabel);
+                          else next.add(dateLabel);
+                          setOpenLinkDates(next);
+                        }}
+                        className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left"
+                      >
+                        <span className="font-semibold text-gray-900">📅 {dateLabel}</span>
+                        <span className="flex items-center gap-2 text-xs text-gray-600">
+                          <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                            📝 {posts.length}
                           </span>
-                          <a
-                            href={item.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 hover:underline break-all text-sm"
-                          >
-                            {item.link}
-                          </a>
+                          <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                            💬 {comments.length}
+                          </span>
+                          <span className={`transition-transform ${isOpen ? "rotate-180" : ""}`}>▾</span>
+                        </span>
+                      </button>
+
+                      {isOpen && (
+                        <div className="p-4 space-y-4">
+                          {([
+                            { title: "📝 Posts propios", list: posts },
+                            { title: "💬 Posts comentados", list: comments },
+                          ]).map((section) => (
+                            <div key={section.title} className="space-y-2">
+                              <h4 className="text-sm font-bold text-gray-700">
+                                {section.title} ({section.list.length})
+                              </h4>
+                              {section.list.length > 0 ? (
+                                <ol className="space-y-1.5 list-decimal list-inside">
+                                  {section.list.map((item, i) => (
+                                    <li key={i} className="text-sm text-gray-500 break-all">
+                                      <a
+                                        href={item.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:text-blue-800 hover:underline"
+                                      >
+                                        {item.link}
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ol>
+                              ) : (
+                                <p className="text-sm text-gray-400">Sin enlaces</p>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-gray-400">Sin enlaces</p>
-                    )}
-                  </div>
-                );
-              })}
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
@@ -1004,7 +1052,7 @@ export default function AdminDashboard() {
       {observationsUser && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col border border-gray-100">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+            <div className="px-3 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <span>📝</span> Observaciones de {observationsUser.name}
               </h3>
@@ -1047,7 +1095,7 @@ export default function AdminDashboard() {
       {editingLog && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col border border-gray-100">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+            <div className="px-3 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <span>✏️</span> Editar reporte
               </h3>
@@ -1064,7 +1112,7 @@ export default function AdminDashboard() {
                 {editingLog.user.name} · {new Date(editingLog.date).toLocaleDateString("es-ES")}
               </p>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-700">
                     WA Grupos
@@ -1249,7 +1297,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-200 flex gap-3 shrink-0">
+            <div className="px-3 sm:px-6 py-4 border-t border-gray-200 flex gap-3 shrink-0">
               <button
                 onClick={() => setEditingLog(null)}
                 disabled={isSavingEdit}

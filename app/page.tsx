@@ -1,17 +1,17 @@
 export default function HomePage() {
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 bg-cover bg-center relative"
+      className="min-h-screen flex items-center justify-center px-4 py-12 bg-cover bg-center relative"
       style={{
         backgroundImage:
           "linear-gradient(rgba(30, 58, 138, 0.85), rgba(67, 56, 202, 0.85)), url('https://images.unsplash.com/photo-1563986768494-4dee2763ff3f?q=80&w=1920&auto=format&fit=crop')",
       }}
     >
       <div className="text-center relative z-10">
-        <h1 className="text-5xl font-bold text-white mb-6 drop-shadow-lg">
+        <h1 className="text-3xl sm:text-5xl font-bold text-white mb-4 sm:mb-6 drop-shadow-lg">
           Difusión Dashboard
         </h1>
-        <p className="text-xl text-blue-100 mb-8 max-w-md mx-auto drop-shadow">
+        <p className="text-base sm:text-xl text-blue-100 mb-8 max-w-md mx-auto drop-shadow">
           Dashboard para registro de métricas de difusión masiva en WhatsApp y
           Facebook
         </p>
@@ -31,7 +31,7 @@ export default function HomePage() {
           </a>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl">
+        <div className="mt-10 sm:mt-12 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 max-w-3xl mx-auto">
           <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-lg p-6 border border-white/20">
             <h3 className="text-lg font-semibold text-white mb-2">
               📱 WhatsApp

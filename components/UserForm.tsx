@@ -95,24 +95,24 @@ export default function UserForm({ userName, userId }: UserFormProps) {
 
   const validateForm = (): boolean => {
     // Validate numeric fields
-    const numericFields = [
-      "whatsappGroupsReached",
-      "whatsappMessagesPerGroup",
-      "whatsappPeopleReached",
-      "fbOwnPostsCreated",
-      "fbCommentsMade",
-      "fbGroupsShared",
-      "fbNewGroupsJoined",
-    ];
+    const numericFields: Record<string, string> = {
+      whatsappGroupsReached: "Grupos Alcanzados",
+      whatsappMessagesPerGroup: "Mensajes Enviados al Día a Grupos",
+      whatsappPeopleReached: "Personas Alcanzadas",
+      fbOwnPostsCreated: "Posts Propios Creados",
+      fbCommentsMade: "Comentarios",
+      fbGroupsShared: "Grupos Compartidos",
+      fbNewGroupsJoined: "Grupos Nuevos",
+    };
 
-    for (const field of numericFields) {
+    for (const [field, label] of Object.entries(numericFields)) {
       const value = formData[field as keyof typeof formData] as string;
       if (!value || isNaN(parseInt(value))) {
-        setError(`${field} must be a valid number`);
+        setError(`"${label}" debe ser un número válido`);
         return false;
       }
       if (parseInt(value) < 0) {
-        setError(`${field} cannot be negative`);
+        setError(`"${label}" no puede ser negativo`);
         return false;
       }
     }
@@ -181,12 +181,12 @@ export default function UserForm({ userName, userId }: UserFormProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Upload failed");
+        throw new Error(errorData.error || "No se pudo enviar el registro");
       }
 
       const data = await response.json();
       setSuccess(
-        `Activity logged successfully! ${data.message}. Folder: ${data.folderUrl}`
+        `¡Actividad registrada! ${data.message}`
       );
 
       // Reset form
@@ -206,7 +206,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         observations: "",
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
     } finally {
       setIsLoading(false);
     }
@@ -214,12 +214,12 @@ export default function UserForm({ userName, userId }: UserFormProps) {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+      <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8 border border-gray-100">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
             <span className="text-white text-xl">📊</span>
           </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Reporte Diario
           </h2>
         </div>
