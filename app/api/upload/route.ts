@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
     const whatsappMessagesPerGroup = parseInt(
       formData.get("whatsappMessagesPerGroup") as string || "0"
     );
+    const whatsappPeopleReached = parseInt(
+      formData.get("whatsappPeopleReached") as string || "0"
+    );
     const fbOwnPostsCreated = parseInt(
       formData.get("fbOwnPostsCreated") as string || "0"
     );
@@ -125,6 +128,7 @@ export async function POST(request: NextRequest) {
       update: {
         whatsappGroupsReached: { increment: whatsappGroupsReached },
         whatsappMessagesPerGroup: { increment: whatsappMessagesPerGroup },
+        whatsappPeopleReached: { increment: whatsappPeopleReached },
         fbOwnPostsCreated: { increment: fbOwnPostsCreated },
         fbOwnPostsLinks: { push: fbPostLinks },
         fbCommentsMade: { increment: fbCommentsMade },
@@ -140,6 +144,7 @@ export async function POST(request: NextRequest) {
         date: normalizedDate,
         whatsappGroupsReached,
         whatsappMessagesPerGroup,
+        whatsappPeopleReached,
         fbOwnPostsCreated,
         fbOwnPostsLinks: fbPostLinks,
         fbCommentsMade,

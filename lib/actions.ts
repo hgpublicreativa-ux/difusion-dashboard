@@ -83,6 +83,7 @@ export async function getAggregatedByUser(
       _sum: {
         whatsappGroupsReached: true,
         whatsappMessagesPerGroup: true,
+        whatsappPeopleReached: true,
         fbOwnPostsCreated: true,
         fbCommentsMade: true,
         fbGroupsShared: true,
@@ -104,6 +105,7 @@ export async function getAggregatedByUser(
       _sum: {
         whatsappGroupsReached: true,
         whatsappMessagesPerGroup: true,
+        whatsappPeopleReached: true,
         fbOwnPostsCreated: true,
         fbCommentsMade: true,
         fbGroupsShared: true,
@@ -144,6 +146,7 @@ export async function getAggregatedByUser(
         totals: {
           whatsappGroupsReached: agg._sum.whatsappGroupsReached || 0,
           whatsappMessagesPerGroup: agg._sum.whatsappMessagesPerGroup || 0,
+          whatsappPeopleReached: agg._sum.whatsappPeopleReached || 0,
           fbOwnPostsCreated: agg._sum.fbOwnPostsCreated || 0,
           fbCommentsMade: agg._sum.fbCommentsMade || 0,
           fbGroupsShared: agg._sum.fbGroupsShared || 0,
@@ -152,6 +155,7 @@ export async function getAggregatedByUser(
         todayTotals: {
           whatsappGroupsReached: today?._sum.whatsappGroupsReached || 0,
           whatsappMessagesPerGroup: today?._sum.whatsappMessagesPerGroup || 0,
+          whatsappPeopleReached: today?._sum.whatsappPeopleReached || 0,
           fbOwnPostsCreated: today?._sum.fbOwnPostsCreated || 0,
           fbCommentsMade: today?._sum.fbCommentsMade || 0,
           fbGroupsShared: today?._sum.fbGroupsShared || 0,
@@ -199,6 +203,7 @@ export async function updateActivityLog(
   data: {
     whatsappGroupsReached: number;
     whatsappMessagesPerGroup: number;
+    whatsappPeopleReached: number;
     fbOwnPostsCreated: number;
     fbCommentsMade: number;
     fbGroupsShared: number;

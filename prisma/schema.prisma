@@ -55,6 +55,7 @@ model ActivityLog {
   // WhatsApp metrics
   whatsappGroupsReached   Int      @default(0)
   whatsappMessagesPerGroup Int     @default(0)
+  whatsappPeopleReached   Int      @default(0)
 
   // Facebook metrics
   fbOwnPostsCreated       Int      @default(0)

@@ -15,6 +15,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
     date: new Date().toISOString().split("T")[0],
     whatsappGroupsReached: "",
     whatsappMessagesPerGroup: "",
+    whatsappPeopleReached: "",
     fbOwnPostsCreated: "",
     fbOwnPostsLinks: [""],
     fbCommentsMade: "",
@@ -97,6 +98,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
     const numericFields = [
       "whatsappGroupsReached",
       "whatsappMessagesPerGroup",
+      "whatsappPeopleReached",
       "fbOwnPostsCreated",
       "fbCommentsMade",
       "fbGroupsShared",
@@ -141,6 +143,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         "whatsappMessagesPerGroup",
         formData.whatsappMessagesPerGroup
       );
+      form.append("whatsappPeopleReached", formData.whatsappPeopleReached);
       form.append("fbOwnPostsCreated", formData.fbOwnPostsCreated);
       form.append("fbCommentsMade", formData.fbCommentsMade);
       form.append("fbGroupsShared", formData.fbGroupsShared);
@@ -191,6 +194,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         date: new Date().toISOString().split("T")[0],
         whatsappGroupsReached: "",
         whatsappMessagesPerGroup: "",
+        whatsappPeopleReached: "",
         fbOwnPostsCreated: "",
         fbOwnPostsLinks: [""],
         fbCommentsMade: "",
@@ -265,7 +269,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             <span>💬</span> Métricas WhatsApp
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-green-900">
                 Grupos Alcanzados
@@ -283,12 +287,27 @@ export default function UserForm({ userName, userId }: UserFormProps) {
 
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-green-900">
-                Mensajes Enviados en el Día
+                Mensajes Enviados al Día a Grupos
               </label>
               <input
                 type="number"
                 name="whatsappMessagesPerGroup"
                 value={formData.whatsappMessagesPerGroup}
+                onChange={handleInputChange}
+                placeholder="0"
+                min="0"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-green-900">
+                Personas Alcanzadas
+              </label>
+              <input
+                type="number"
+                name="whatsappPeopleReached"
+                value={formData.whatsappPeopleReached}
                 onChange={handleInputChange}
                 placeholder="0"
                 min="0"

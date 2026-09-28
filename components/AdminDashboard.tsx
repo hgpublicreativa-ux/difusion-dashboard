@@ -14,6 +14,7 @@ import autoTable from "jspdf-autotable";
 interface UserTotals {
   whatsappGroupsReached: number;
   whatsappMessagesPerGroup: number;
+  whatsappPeopleReached: number;
   fbOwnPostsCreated: number;
   fbCommentsMade: number;
   fbGroupsShared: number;
@@ -41,6 +42,7 @@ interface ObservationEntry {
 interface EditFormState {
   whatsappGroupsReached: string;
   whatsappMessagesPerGroup: string;
+  whatsappPeopleReached: string;
   fbOwnPostsCreated: string;
   fbCommentsMade: string;
   fbGroupsShared: string;
@@ -61,6 +63,7 @@ interface DailyLog {
   date: Date;
   whatsappGroupsReached: number;
   whatsappMessagesPerGroup: number;
+  whatsappPeopleReached: number;
   fbOwnPostsCreated: number;
   fbOwnPostsLinks: string[];
   fbCommentsMade: number;
@@ -92,6 +95,7 @@ export default function AdminDashboard() {
   const [editFormData, setEditFormData] = useState<EditFormState>({
     whatsappGroupsReached: "",
     whatsappMessagesPerGroup: "",
+    whatsappPeopleReached: "",
     fbOwnPostsCreated: "",
     fbCommentsMade: "",
     fbGroupsShared: "",
@@ -177,6 +181,7 @@ export default function AdminDashboard() {
     setEditFormData({
       whatsappGroupsReached: String(log.whatsappGroupsReached),
       whatsappMessagesPerGroup: String(log.whatsappMessagesPerGroup),
+      whatsappPeopleReached: String(log.whatsappPeopleReached),
       fbOwnPostsCreated: String(log.fbOwnPostsCreated),
       fbCommentsMade: String(log.fbCommentsMade),
       fbGroupsShared: String(log.fbGroupsShared),
@@ -229,6 +234,7 @@ export default function AdminDashboard() {
       const result = await updateActivityLog(editingLog.id, {
         whatsappGroupsReached: parseInt(editFormData.whatsappGroupsReached) || 0,
         whatsappMessagesPerGroup: parseInt(editFormData.whatsappMessagesPerGroup) || 0,
+        whatsappPeopleReached: parseInt(editFormData.whatsappPeopleReached) || 0,
         fbOwnPostsCreated: parseInt(editFormData.fbOwnPostsCreated) || 0,
         fbCommentsMade: parseInt(editFormData.fbCommentsMade) || 0,
         fbGroupsShared: parseInt(editFormData.fbGroupsShared) || 0,
@@ -312,6 +318,10 @@ export default function AdminDashboard() {
       (sum, u) => sum + u.totals.whatsappMessagesPerGroup,
       0
     );
+    const totalPeople = userAggregates.reduce(
+      (sum, u) => sum + u.totals.whatsappPeopleReached,
+      0
+    );
     const totalFbPosts = userAggregates.reduce(
       (sum, u) => sum + u.totals.fbOwnPostsCreated,
       0
@@ -332,7 +342,7 @@ export default function AdminDashboard() {
     doc.setFontSize(10);
     doc.setTextColor(30, 30, 30);
     doc.text(
-      `WA Grupos: ${formatNumber(totalGroups)}   |   WA Mensajes: ${formatNumber(totalMessages)}   |   FB Posts: ${formatNumber(totalFbPosts)}`,
+      `WA Grupos: ${formatNumber(totalGroups)}   |   WA Mensajes: ${formatNumber(totalMessages)}   |   WA Personas: ${formatNumber(totalPeople)}   |   FB Posts: ${formatNumber(totalFbPosts)}`,
       14,
       40
     );
@@ -349,6 +359,7 @@ export default function AdminDashboard() {
           "Usuario",
           "WA Grupos",
           "WA Mensajes",
+          "WA Personas",
           "FB Posts",
           "FB Comentarios",
           "FB Grupos Comp.",
@@ -359,6 +370,7 @@ export default function AdminDashboard() {
         u.user.name,
         `${formatNumber(u.totals.whatsappGroupsReached)} (hoy: ${formatNumber(u.todayTotals.whatsappGroupsReached)})`,
         `${formatNumber(u.totals.whatsappMessagesPerGroup)} (hoy: ${formatNumber(u.todayTotals.whatsappMessagesPerGroup)})`,
+        `${formatNumber(u.totals.whatsappPeopleReached)} (hoy: ${formatNumber(u.todayTotals.whatsappPeopleReached)})`,
         `${formatNumber(u.totals.fbOwnPostsCreated)} (hoy: ${formatNumber(u.todayTotals.fbOwnPostsCreated)})`,
         `${formatNumber(u.totals.fbCommentsMade)} (hoy: ${formatNumber(u.todayTotals.fbCommentsMade)})`,
         `${formatNumber(u.totals.fbGroupsShared)} (hoy: ${formatNumber(u.todayTotals.fbGroupsShared)})`,
@@ -478,6 +490,7 @@ export default function AdminDashboard() {
           (acc, user) => ({
             groups: acc.groups + user.totals.whatsappGroupsReached,
             messages: acc.messages + user.totals.whatsappMessagesPerGroup,
+            people: acc.people + user.totals.whatsappPeopleReached,
             fbPosts: acc.fbPosts + user.totals.fbOwnPostsCreated,
             fbComments: acc.fbComments + user.totals.fbCommentsMade,
             fbGroupsShared: acc.fbGroupsShared + user.totals.fbGroupsShared,
@@ -486,6 +499,7 @@ export default function AdminDashboard() {
           {
             groups: 0,
             messages: 0,
+            people: 0,
             fbPosts: 0,
             fbComments: 0,
             fbGroupsShared: 0,
@@ -505,8 +519,15 @@ export default function AdminDashboard() {
             icon: "💬",
             label: "Total Mensajes Enviados",
             value: totals.messages,
-            unit: "mensajes de WhatsApp",
+            unit: "mensajes a grupos de WhatsApp",
             color: "green",
+          },
+          {
+            icon: "👥",
+            label: "Total Personas Alcanzadas",
+            value: totals.people,
+            unit: "personas por WhatsApp",
+            color: "teal",
           },
           {
             icon: "📝",
@@ -577,6 +598,13 @@ export default function AdminDashboard() {
             value: "text-pink-600",
             unit: "text-pink-700",
           },
+          teal: {
+            bg: "from-teal-50 to-teal-100",
+            border: "border-teal-600",
+            title: "text-teal-900",
+            value: "text-teal-600",
+            unit: "text-teal-700",
+          },
           amber: {
             bg: "from-amber-50 to-amber-100",
             border: "border-amber-600",
@@ -633,6 +661,9 @@ export default function AdminDashboard() {
                   WA Mensajes Enviados
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                  WA Personas Alcanzadas
+                </th>
+                <th className="px-6 py-3 text-center font-semibold text-gray-700">
                   FB Posts
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
@@ -681,6 +712,10 @@ export default function AdminDashboard() {
                         highlight
                       />
                       <MetricCell
+                        today={user.todayTotals.whatsappPeopleReached}
+                        total={user.totals.whatsappPeopleReached}
+                      />
+                      <MetricCell
                         today={user.todayTotals.fbOwnPostsCreated}
                         total={user.totals.fbOwnPostsCreated}
                       />
@@ -717,7 +752,7 @@ export default function AdminDashboard() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                     No data available for the selected date range
                   </td>
                 </tr>
@@ -753,6 +788,9 @@ export default function AdminDashboard() {
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
                   WA Mensajes
+                </th>
+                <th className="px-6 py-3 text-center font-semibold text-gray-700">
+                  WA Personas
                 </th>
                 <th className="px-6 py-3 text-center font-semibold text-gray-700">
                   FB Posts
@@ -792,6 +830,9 @@ export default function AdminDashboard() {
                       {formatNumber(log.whatsappMessagesPerGroup)}
                     </td>
                     <td className="px-6 py-3 text-center text-gray-700">
+                      {formatNumber(log.whatsappPeopleReached)}
+                    </td>
+                    <td className="px-6 py-3 text-center text-gray-700">
                       {formatNumber(log.fbOwnPostsCreated)}
                     </td>
                     <td className="px-6 py-3 text-center text-gray-700">
@@ -829,7 +870,7 @@ export default function AdminDashboard() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={11} className="px-6 py-8 text-center text-gray-500">
                     No hay registros para el rango de fechas seleccionado
                   </td>
                 </tr>
@@ -1047,6 +1088,19 @@ export default function AdminDashboard() {
                     value={editFormData.whatsappMessagesPerGroup}
                     onChange={(e) =>
                       setEditFormData((p) => ({ ...p, whatsappMessagesPerGroup: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    WA Personas Alcanzadas
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editFormData.whatsappPeopleReached}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({ ...p, whatsappPeopleReached: e.target.value }))
                     }
                   />
                 </div>
