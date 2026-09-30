@@ -10,7 +10,7 @@ import {
 } from "@/lib/actions";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { METRIC_LABELS } from "@/lib/labels";
+import { METRIC_LABELS, COMMENT_LINKS_LABEL } from "@/lib/labels";
 import { formatDay, formatDateTimeEc } from "@/lib/dates";
 
 interface UserTotals {
@@ -349,31 +349,22 @@ export default function AdminDashboard() {
 
     doc.setFontSize(10);
     doc.setTextColor(30, 30, 30);
-    doc.text(
-      `WA Grupos: ${formatNumber(totalGroups)}   |   WA Mensajes: ${formatNumber(totalMessages)}   |   WA Personas: ${formatNumber(totalPeople)}   |   FB Posts: ${formatNumber(totalFbPosts)}`,
-      14,
-      40
-    );
-    doc.text(
-      `FB Comentarios: ${formatNumber(totalFbComments)}   |   FB Grupos Compartidos: ${formatNumber(totalFbGroupsShared)}   |   FB Grupos Nuevos: ${formatNumber(totalFbNewGroups)}`,
-      14,
-      46
-    );
+    const summary: [string, number][] = [
+      [METRIC_LABELS.whatsappGroupsReached, totalGroups],
+      [METRIC_LABELS.whatsappMessagesPerGroup, totalMessages],
+      [METRIC_LABELS.whatsappPeopleReached, totalPeople],
+      [METRIC_LABELS.fbOwnPostsCreated, totalFbPosts],
+      [METRIC_LABELS.fbCommentsMade, totalFbComments],
+      [METRIC_LABELS.fbGroupsShared, totalFbGroupsShared],
+      [METRIC_LABELS.fbNewGroupsJoined, totalFbNewGroups],
+    ];
+    summary.forEach(([label, value], i) => {
+      doc.text(`${label}: ${formatNumber(value)}`, 14, 40 + i * 5);
+    });
 
     autoTable(doc, {
-      startY: 52,
-      head: [
-        [
-          "Usuario",
-          "WA Grupos",
-          "WA Mensajes",
-          "WA Personas",
-          "FB Posts",
-          "FB Comentarios",
-          "FB Grupos Comp.",
-          "FB Grupos Nuevos",
-        ],
-      ],
+      startY: 40 + summary.length * 5 + 2,
+      head: [["Usuario", ...summary.map(([label]) => label)]],
       body: userAggregates.map((u) => [
         u.user.name,
         `${formatNumber(u.totals.whatsappGroupsReached)} (hoy: ${formatNumber(u.todayTotals.whatsappGroupsReached)})`,
@@ -396,7 +387,7 @@ export default function AdminDashboard() {
     if (facebookLinks.length > 0) {
       doc.setFontSize(13);
       doc.setTextColor(30, 30, 30);
-      doc.text("Enlaces de Facebook (posts propios y comentados)", 14, afterUserTableY + 12);
+      doc.text("Enlaces de Facebook (posts propios y posts en los que se comentó)", 14, afterUserTableY + 12);
 
       autoTable(doc, {
         startY: afterUserTableY + 16,
@@ -404,7 +395,7 @@ export default function AdminDashboard() {
         body: facebookLinks.map((l) => [
           l.userName,
           formatDay(l.date),
-          l.kind === "post" ? "Post propio" : "Comentado",
+          l.kind === "post" ? "Post propio" : "Post en el que se comentó",
           l.link,
         ]),
         headStyles: { fillColor: [147, 51, 234] },
@@ -525,14 +516,14 @@ export default function AdminDashboard() {
           },
           {
             icon: "💬",
-            label: "Total de mensajes enviados durante el período de reporte",
+            label: "Cantidad total de mensajes enviados durante el período de reporte",
             value: totals.messages,
             unit: "mensajes a grupos de WhatsApp",
             color: "green",
           },
           {
             icon: "👥",
-            label: "Total de personas individuales a las que se enviaron mensajes de WhatsApp",
+            label: "Total de personas individuales a las que se enviaron mensajes de WhatsApp (no grupos)",
             value: totals.people,
             unit: "personas por WhatsApp",
             color: "teal",
@@ -546,7 +537,7 @@ export default function AdminDashboard() {
           },
           {
             icon: "💭",
-            label: "Total de comentarios contestados realizados",
+            label: "Total de comentarios realizados",
             value: totals.fbComments,
             unit: "comentarios de Facebook",
             color: "purple",
@@ -663,25 +654,25 @@ export default function AdminDashboard() {
                   Usuario
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Grupos
+                  {METRIC_LABELS.whatsappGroupsReached}
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Mensajes Enviados
+                  {METRIC_LABELS.whatsappMessagesPerGroup}
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Personas Alcanzadas
+                  {METRIC_LABELS.whatsappPeopleReached}
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Posts
+                  {METRIC_LABELS.fbOwnPostsCreated}
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Comentarios
+                  {METRIC_LABELS.fbCommentsMade}
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Grupos Comp.
+                  {METRIC_LABELS.fbGroupsShared}
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Grupos Nuevos
+                  {METRIC_LABELS.fbNewGroupsJoined}
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   Drive
@@ -1065,7 +1056,7 @@ export default function AdminDashboard() {
                         <div className="p-4 space-y-4">
                           {([
                             { title: "📝 Posts propios", list: posts },
-                            { title: "💬 Posts comentados", list: comments },
+                            { title: `💬 ${COMMENT_LINKS_LABEL}`, list: comments },
                           ]).map((section) => (
                             <div key={section.title} className="space-y-2">
                               <h4 className="text-sm font-bold text-gray-700">
@@ -1301,7 +1292,7 @@ export default function AdminDashboard() {
               {editingLog && editingLog.fbCommentLinks.length > 0 && (
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-700">
-                    Enlaces de posts comentados ya registrados
+                    {COMMENT_LINKS_LABEL} (ya registrados)
                   </label>
                   <div className="space-y-1">
                     {editingLog.fbCommentLinks.map((link, i) => (

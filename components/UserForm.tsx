@@ -1,6 +1,6 @@
 "use client";
 
-import { METRIC_LABELS } from "@/lib/labels";
+import { METRIC_LABELS, COMMENT_LINKS_LABEL } from "@/lib/labels";
 import { FormEvent, useState } from "react";
 import { ecuadorToday } from "@/lib/dates";
 
@@ -421,7 +421,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             </div>
             <div>
               <label className="block text-sm font-semibold text-blue-900 mb-2">
-                Enlaces de Posts Comentados
+                {COMMENT_LINKS_LABEL}
               </label>
               {formData.fbCommentLinks.map((link, index) => (
                 <div key={index} className="flex gap-2 mb-2">
