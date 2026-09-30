@@ -10,6 +10,7 @@ import {
 } from "@/lib/actions";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { METRIC_LABELS } from "@/lib/labels";
 import { formatDay, formatDateTimeEc } from "@/lib/dates";
 
 interface UserTotals {
@@ -92,6 +93,10 @@ export default function AdminDashboard() {
   const [linksModalUser, setLinksModalUser] = useState<{ id: string; name: string } | null>(null);
   // Expanded days in the links accordion; null = default (most recent day open)
   const [openLinkDates, setOpenLinkDates] = useState<Set<string> | null>(null);
+
+  // Daily history per-user modal; null dates = default (most recent day open)
+  const [historyUser, setHistoryUser] = useState<{ id: string; name: string } | null>(null);
+  const [openHistoryDates, setOpenHistoryDates] = useState<Set<string> | null>(null);
 
   // Edit activity log modal
   const [editingLog, setEditingLog] = useState<DailyLog | null>(null);
@@ -513,49 +518,49 @@ export default function AdminDashboard() {
         const cards = [
           {
             icon: "📱",
-            label: "Total Grupos Alcanzados",
+            label: "Total de grupos a los que se enviaron mensajes",
             value: totals.groups,
             unit: "grupos de WhatsApp",
             color: "blue",
           },
           {
             icon: "💬",
-            label: "Total Mensajes Enviados",
+            label: "Total de mensajes enviados durante el período de reporte",
             value: totals.messages,
             unit: "mensajes a grupos de WhatsApp",
             color: "green",
           },
           {
             icon: "👥",
-            label: "Total Personas Alcanzadas",
+            label: "Total de personas individuales a las que se enviaron mensajes de WhatsApp",
             value: totals.people,
             unit: "personas por WhatsApp",
             color: "teal",
           },
           {
             icon: "📝",
-            label: "Total Posts Creados",
+            label: "Total de posts creados en las páginas asignadas",
             value: totals.fbPosts,
             unit: "posts de Facebook",
             color: "indigo",
           },
           {
             icon: "💭",
-            label: "Total Comentarios",
+            label: "Total de comentarios contestados realizados",
             value: totals.fbComments,
             unit: "comentarios de Facebook",
             color: "purple",
           },
           {
             icon: "🔗",
-            label: "Total Grupos Compartidos",
+            label: "Cantidad de grupos en los que se compartió contenido",
             value: totals.fbGroupsShared,
             unit: "grupos de Facebook",
             color: "pink",
           },
           {
             icon: "✨",
-            label: "Total Grupos Nuevos",
+            label: "Cantidad de grupos a los que se unieron",
             value: totals.fbNewGroups,
             unit: "grupos nuevos de Facebook",
             color: "amber",
@@ -765,14 +770,14 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Table: Daily History (individual reports, one row per user per day) */}
+      {/* Daily History: one row per user; details open in a modal grouped by date */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
         <div className="px-3 sm:px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
             <span>📆</span> Historial Diario
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Un registro por usuario por día. Si alguien reporta varias veces el mismo día, se acumula en la misma fila.
+            Un registro por usuario. Abre el detalle para ver cada día reportado.
           </p>
         </div>
 
@@ -780,108 +785,156 @@ export default function AdminDashboard() {
           <table className="w-full text-sm">
             <thead className="bg-gray-100 border-b border-gray-200 sticky top-0">
               <tr>
-                <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-700">
-                  Fecha
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-700">
-                  Usuario
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Grupos
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Mensajes
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  WA Personas
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Posts
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Comentarios
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Grupos Comp.
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  FB Grupos Nuevos
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  Evidencias
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  Acciones
-                </th>
+                <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-700">Usuario</th>
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">Días reportados</th>
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">Último reporte</th>
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">Detalle</th>
               </tr>
             </thead>
-
             <tbody className="divide-y divide-gray-200">
-              {dailyLogs.length > 0 ? (
-                dailyLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50">
-                    <td className="px-3 sm:px-6 py-3 text-gray-700 whitespace-nowrap">
-                      {formatDay(log.date)}
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 font-medium text-gray-900">
-                      {log.user.name}
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
-                      {formatNumber(log.whatsappGroupsReached)}
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
-                      {formatNumber(log.whatsappMessagesPerGroup)}
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
-                      {formatNumber(log.whatsappPeopleReached)}
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
-                      {formatNumber(log.fbOwnPostsCreated)}
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
-                      {formatNumber(log.fbCommentsMade)}
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
-                      {formatNumber(log.fbGroupsShared)}
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">
-                      {formatNumber(log.fbNewGroupsJoined)}
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 text-center">
-                      {log.driveEvidenceFolderUrl ? (
-                        <a
-                          href={log.driveEvidenceFolderUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded hover:bg-blue-600"
-                        >
-                          📁 Ver
-                        </a>
-                      ) : (
-                        <span className="text-gray-400 text-xs">—</span>
-                      )}
+              {(() => {
+                // dailyLogs arrive newest first, so the first log per user is the latest
+                const byUser = new Map<string, { id: string; name: string; logs: DailyLog[] }>();
+                dailyLogs.forEach((log) => {
+                  const entry = byUser.get(log.user.id) || { ...log.user, logs: [] };
+                  entry.logs.push(log);
+                  byUser.set(log.user.id, entry);
+                });
+
+                if (byUser.size === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={4} className="px-3 sm:px-6 py-8 text-center text-gray-500">
+                        No hay registros para el rango de fechas seleccionado
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return Array.from(byUser.values()).map((u) => (
+                  <tr key={u.id} className="hover:bg-gray-50">
+                    <td className="px-3 sm:px-6 py-3 font-medium text-gray-900">{u.name}</td>
+                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700">{u.logs.length}</td>
+                    <td className="px-3 sm:px-6 py-3 text-center text-gray-700 whitespace-nowrap">
+                      {formatDay(u.logs[0].date)}
                     </td>
                     <td className="px-3 sm:px-6 py-3 text-center">
                       <button
-                        onClick={() => handleOpenEditLog(log)}
-                        className="px-3 py-1 bg-amber-500 text-white text-xs font-semibold rounded hover:bg-amber-600"
+                        onClick={() => {
+                          setHistoryUser({ id: u.id, name: u.name });
+                          setOpenHistoryDates(null);
+                        }}
+                        className="px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded hover:bg-blue-600 whitespace-nowrap"
                       >
-                        ✏️ Editar
+                        📋 Ver detalle
                       </button>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={11} className="px-3 sm:px-6 py-8 text-center text-gray-500">
-                    No hay registros para el rango de fechas seleccionado
-                  </td>
-                </tr>
-              )}
+                ));
+              })()}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Per-user Daily History Modal (accordion by date) */}
+      {historyUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-40">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col border border-gray-100">
+            <div className="px-3 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <span>📆</span> Historial de {historyUser.name}
+              </h3>
+              <button
+                onClick={() => setHistoryUser(null)}
+                className="text-gray-400 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-4 sm:p-6 space-y-3">
+              {(() => {
+                const logs = dailyLogs.filter((l) => l.user.id === historyUser.id);
+                if (logs.length === 0) {
+                  return <p className="text-sm text-gray-400">Sin registros</p>;
+                }
+
+                // Until the admin toggles something, only the most recent day is open
+                const openDates = openHistoryDates ?? new Set([logs[0].id]);
+
+                return logs.map((log) => {
+                  const isOpen = openDates.has(log.id);
+                  const rows: { label: string; value: number }[] = [
+                    { label: METRIC_LABELS.whatsappGroupsReached, value: log.whatsappGroupsReached },
+                    { label: METRIC_LABELS.whatsappMessagesPerGroup, value: log.whatsappMessagesPerGroup },
+                    { label: METRIC_LABELS.whatsappPeopleReached, value: log.whatsappPeopleReached },
+                    { label: METRIC_LABELS.fbOwnPostsCreated, value: log.fbOwnPostsCreated },
+                    { label: METRIC_LABELS.fbCommentsMade, value: log.fbCommentsMade },
+                    { label: METRIC_LABELS.fbGroupsShared, value: log.fbGroupsShared },
+                    { label: METRIC_LABELS.fbNewGroupsJoined, value: log.fbNewGroupsJoined },
+                  ];
+
+                  return (
+                    <div key={log.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => {
+                          const next = new Set(openDates);
+                          if (isOpen) next.delete(log.id);
+                          else next.add(log.id);
+                          setOpenHistoryDates(next);
+                        }}
+                        className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left"
+                      >
+                        <span className="font-semibold text-gray-900">📅 {formatDay(log.date)}</span>
+                        <span className={`transition-transform ${isOpen ? "rotate-180" : ""}`}>▾</span>
+                      </button>
+
+                      {isOpen && (
+                        <div className="p-4 space-y-4">
+                          <dl className="divide-y divide-gray-100">
+                            {rows.map((r) => (
+                              <div key={r.label} className="flex items-start justify-between gap-4 py-2">
+                                <dt className="text-sm text-gray-600">{r.label}</dt>
+                                <dd className="text-sm font-semibold text-gray-900 tabular-nums">
+                                  {formatNumber(r.value)}
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                          {log.observations && (
+                            <p className="text-sm text-gray-700 bg-gray-50 rounded p-3 whitespace-pre-wrap">
+                              📝 {log.observations}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-2">
+                            {log.driveEvidenceFolderUrl && (
+                              <a
+                                href={log.driveEvidenceFolderUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded hover:bg-blue-600"
+                              >
+                                📁 Ver evidencias
+                              </a>
+                            )}
+                            <button
+                              onClick={() => handleOpenEditLog(log)}
+                              className="px-3 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded hover:bg-amber-600"
+                            >
+                              ✏️ Editar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Facebook Links: per-user list, each with its own "Ver Enlaces" button */}
       {(() => {
@@ -1116,7 +1169,7 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-700">
-                    WA Grupos
+                    {METRIC_LABELS.whatsappGroupsReached}
                   </label>
                   <input
                     type="number"
@@ -1129,7 +1182,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-700">
-                    WA Mensajes Enviados
+                    {METRIC_LABELS.whatsappMessagesPerGroup}
                   </label>
                   <input
                     type="number"
@@ -1142,7 +1195,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-700">
-                    WA Personas Alcanzadas
+                    {METRIC_LABELS.whatsappPeopleReached}
                   </label>
                   <input
                     type="number"
@@ -1155,7 +1208,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-700">
-                    FB Posts
+                    {METRIC_LABELS.fbOwnPostsCreated}
                   </label>
                   <input
                     type="number"
@@ -1168,7 +1221,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-700">
-                    FB Comentarios
+                    {METRIC_LABELS.fbCommentsMade}
                   </label>
                   <input
                     type="number"
@@ -1181,7 +1234,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-700">
-                    FB Grupos Compartidos
+                    {METRIC_LABELS.fbGroupsShared}
                   </label>
                   <input
                     type="number"
@@ -1194,7 +1247,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-700">
-                    FB Grupos Nuevos
+                    {METRIC_LABELS.fbNewGroupsJoined}
                   </label>
                   <input
                     type="number"

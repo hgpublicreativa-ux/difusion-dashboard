@@ -1,5 +1,6 @@
 "use client";
 
+import { METRIC_LABELS } from "@/lib/labels";
 import { FormEvent, useState } from "react";
 import { ecuadorToday } from "@/lib/dates";
 
@@ -97,13 +98,13 @@ export default function UserForm({ userName, userId }: UserFormProps) {
   const validateForm = (): boolean => {
     // Validate numeric fields
     const numericFields: Record<string, string> = {
-      whatsappGroupsReached: "Grupos Alcanzados",
-      whatsappMessagesPerGroup: "Mensajes Enviados al Día a Grupos",
-      whatsappPeopleReached: "Personas Alcanzadas",
-      fbOwnPostsCreated: "Posts Propios Creados",
-      fbCommentsMade: "Comentarios",
-      fbGroupsShared: "Grupos Compartidos",
-      fbNewGroupsJoined: "Grupos Nuevos",
+      whatsappGroupsReached: METRIC_LABELS.whatsappGroupsReached,
+      whatsappMessagesPerGroup: METRIC_LABELS.whatsappMessagesPerGroup,
+      whatsappPeopleReached: METRIC_LABELS.whatsappPeopleReached,
+      fbOwnPostsCreated: METRIC_LABELS.fbOwnPostsCreated,
+      fbCommentsMade: METRIC_LABELS.fbCommentsMade,
+      fbGroupsShared: METRIC_LABELS.fbGroupsShared,
+      fbNewGroupsJoined: METRIC_LABELS.fbNewGroupsJoined,
     };
 
     for (const [field, label] of Object.entries(numericFields)) {
@@ -273,7 +274,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-green-900">
-                Grupos Alcanzados
+                {METRIC_LABELS.whatsappGroupsReached}
               </label>
               <input
                 type="number"
@@ -288,7 +289,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
 
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-green-900">
-                Mensajes Enviados al Día a Grupos
+                {METRIC_LABELS.whatsappMessagesPerGroup}
               </label>
               <input
                 type="number"
@@ -303,7 +304,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
 
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-green-900">
-                Personas Alcanzadas
+                {METRIC_LABELS.whatsappPeopleReached}
               </label>
               <input
                 type="number"
@@ -327,7 +328,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-blue-900">
-                Posts Propios Creados
+                {METRIC_LABELS.fbOwnPostsCreated}
               </label>
               <input
                 type="number"
@@ -375,7 +376,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-blue-900">
-                  Comentarios
+                  {METRIC_LABELS.fbCommentsMade}
                 </label>
                 <input
                   type="number"
@@ -390,7 +391,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
 
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-blue-900">
-                  Grupos Compartidos
+                  {METRIC_LABELS.fbGroupsShared}
                 </label>
                 <input
                   type="number"
@@ -405,7 +406,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
 
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-blue-900">
-                  Grupos Nuevos
+                  {METRIC_LABELS.fbNewGroupsJoined}
                 </label>
                 <input
                   type="number"
