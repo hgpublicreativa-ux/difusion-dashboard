@@ -7,6 +7,7 @@ export const METRIC_LABELS = {
   fbCommentsMade: "Comentarios realizados",
   fbGroupsShared: "Grupos en los que se compartió contenido",
   fbNewGroupsJoined: "Grupos a los que se unieron hoy",
+  fbPeopleMessaged: "Personas individuales a las que se enviaron mensajes de Facebook directo (no grupos)",
 } as const;
 
 export const COMMENT_LINKS_LABEL = "Enlaces de posts en los que se comentó";

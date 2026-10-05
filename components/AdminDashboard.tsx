@@ -21,6 +21,7 @@ interface UserTotals {
   fbCommentsMade: number;
   fbGroupsShared: number;
   fbNewGroupsJoined: number;
+  fbPeopleMessaged: number;
 }
 
 interface AggregatedUser {
@@ -49,6 +50,7 @@ interface EditFormState {
   fbCommentsMade: string;
   fbGroupsShared: string;
   fbNewGroupsJoined: string;
+  fbPeopleMessaged: string;
   observations: string;
 }
 
@@ -72,6 +74,7 @@ interface DailyLog {
   fbCommentLinks: string[];
   fbGroupsShared: number;
   fbNewGroupsJoined: number;
+  fbPeopleMessaged: number;
   driveEvidenceFolderUrl: string | null;
   observations: string | null;
   user: { id: string; name: string };
@@ -108,6 +111,7 @@ export default function AdminDashboard() {
     fbCommentsMade: "",
     fbGroupsShared: "",
     fbNewGroupsJoined: "",
+    fbPeopleMessaged: "",
     observations: "",
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -194,6 +198,7 @@ export default function AdminDashboard() {
       fbCommentsMade: String(log.fbCommentsMade),
       fbGroupsShared: String(log.fbGroupsShared),
       fbNewGroupsJoined: String(log.fbNewGroupsJoined),
+      fbPeopleMessaged: String(log.fbPeopleMessaged),
       observations: log.observations || "",
     });
     setNewPostLinks([]);
@@ -247,6 +252,7 @@ export default function AdminDashboard() {
         fbCommentsMade: parseInt(editFormData.fbCommentsMade) || 0,
         fbGroupsShared: parseInt(editFormData.fbGroupsShared) || 0,
         fbNewGroupsJoined: parseInt(editFormData.fbNewGroupsJoined) || 0,
+        fbPeopleMessaged: parseInt(editFormData.fbPeopleMessaged) || 0,
         observations: editFormData.observations.trim() || null,
         newPostLinks: newPostLinks.slice(0, extraPostsCount),
         newCommentLinks: newCommentLinks.slice(0, extraCommentsCount),
@@ -346,6 +352,10 @@ export default function AdminDashboard() {
       (sum, u) => sum + u.totals.fbNewGroupsJoined,
       0
     );
+    const totalFbPeople = userAggregates.reduce(
+      (sum, u) => sum + u.totals.fbPeopleMessaged,
+      0
+    );
 
     doc.setFontSize(10);
     doc.setTextColor(30, 30, 30);
@@ -357,6 +367,7 @@ export default function AdminDashboard() {
       [METRIC_LABELS.fbCommentsMade, totalFbComments],
       [METRIC_LABELS.fbGroupsShared, totalFbGroupsShared],
       [METRIC_LABELS.fbNewGroupsJoined, totalFbNewGroups],
+      [METRIC_LABELS.fbPeopleMessaged, totalFbPeople],
     ];
     summary.forEach(([label, value], i) => {
       doc.text(`${label}: ${formatNumber(value)}`, 14, 40 + i * 5);
@@ -494,6 +505,7 @@ export default function AdminDashboard() {
             fbComments: acc.fbComments + user.totals.fbCommentsMade,
             fbGroupsShared: acc.fbGroupsShared + user.totals.fbGroupsShared,
             fbNewGroups: acc.fbNewGroups + user.totals.fbNewGroupsJoined,
+            fbPeople: acc.fbPeople + user.totals.fbPeopleMessaged,
           }),
           {
             groups: 0,
@@ -503,6 +515,7 @@ export default function AdminDashboard() {
             fbComments: 0,
             fbGroupsShared: 0,
             fbNewGroups: 0,
+            fbPeople: 0,
           }
         );
 
@@ -555,6 +568,13 @@ export default function AdminDashboard() {
             value: totals.fbNewGroups,
             unit: "grupos nuevos de Facebook",
             color: "amber",
+          },
+          {
+            icon: "📩",
+            label: "Total de personas individuales a las que se enviaron mensajes de Facebook directo (no grupos)",
+            value: totals.fbPeople,
+            unit: "personas por Facebook",
+            color: "teal",
           },
         ];
 
@@ -675,6 +695,9 @@ export default function AdminDashboard() {
                   {METRIC_LABELS.fbNewGroupsJoined}
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
+                  {METRIC_LABELS.fbPeopleMessaged}
+                </th>
+                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   Drive
                 </th>
               </tr>
@@ -729,6 +752,10 @@ export default function AdminDashboard() {
                       <MetricCell
                         today={user.todayTotals.fbNewGroupsJoined}
                         total={user.totals.fbNewGroupsJoined}
+                      />
+                      <MetricCell
+                        today={user.todayTotals.fbPeopleMessaged}
+                        total={user.totals.fbPeopleMessaged}
                       />
                       <td className="px-3 sm:px-6 py-4 text-center">
                         {user.user.driveFolderUrl ? (
@@ -864,6 +891,7 @@ export default function AdminDashboard() {
                     { label: METRIC_LABELS.fbCommentsMade, value: log.fbCommentsMade },
                     { label: METRIC_LABELS.fbGroupsShared, value: log.fbGroupsShared },
                     { label: METRIC_LABELS.fbNewGroupsJoined, value: log.fbNewGroupsJoined },
+                    { label: METRIC_LABELS.fbPeopleMessaged, value: log.fbPeopleMessaged },
                   ];
 
                   return (
@@ -1246,6 +1274,19 @@ export default function AdminDashboard() {
                     value={editFormData.fbNewGroupsJoined}
                     onChange={(e) =>
                       setEditFormData((p) => ({ ...p, fbNewGroupsJoined: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    {METRIC_LABELS.fbPeopleMessaged}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editFormData.fbPeopleMessaged}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({ ...p, fbPeopleMessaged: e.target.value }))
                     }
                   />
                 </div>

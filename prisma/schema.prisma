@@ -64,6 +64,7 @@ model ActivityLog {
   fbCommentLinks          String[] @default([])
   fbGroupsShared          Int      @default(0)
   fbNewGroupsJoined       Int      @default(0)
+  fbPeopleMessaged        Int      @default(0)
 
   // Drive folder
   driveEvidenceFolderUrl  String?

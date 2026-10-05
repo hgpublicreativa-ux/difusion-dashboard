@@ -24,6 +24,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
     fbCommentLinks: [""],
     fbGroupsShared: "",
     fbNewGroupsJoined: "",
+    fbPeopleMessaged: "",
     whatsappFiles: [] as File[],
     facebookFiles: [] as File[],
     observations: "",
@@ -105,6 +106,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
       fbCommentsMade: METRIC_LABELS.fbCommentsMade,
       fbGroupsShared: METRIC_LABELS.fbGroupsShared,
       fbNewGroupsJoined: METRIC_LABELS.fbNewGroupsJoined,
+      fbPeopleMessaged: METRIC_LABELS.fbPeopleMessaged,
     };
 
     for (const [field, label] of Object.entries(numericFields)) {
@@ -150,6 +152,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
       form.append("fbCommentsMade", formData.fbCommentsMade);
       form.append("fbGroupsShared", formData.fbGroupsShared);
       form.append("fbNewGroupsJoined", formData.fbNewGroupsJoined);
+      form.append("fbPeopleMessaged", formData.fbPeopleMessaged);
       form.append("observations", formData.observations);
 
       // Add Facebook post links
@@ -203,6 +206,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         fbCommentLinks: [""],
         fbGroupsShared: "",
         fbNewGroupsJoined: "",
+        fbPeopleMessaged: "",
         whatsappFiles: [],
         facebookFiles: [],
         observations: "",
@@ -412,6 +416,21 @@ export default function UserForm({ userName, userId }: UserFormProps) {
                   type="number"
                   name="fbNewGroupsJoined"
                   value={formData.fbNewGroupsJoined}
+                  onChange={handleInputChange}
+                  placeholder="0"
+                  min="0"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-blue-900">
+                  {METRIC_LABELS.fbPeopleMessaged}
+                </label>
+                <input
+                  type="number"
+                  name="fbPeopleMessaged"
+                  value={formData.fbPeopleMessaged}
                   onChange={handleInputChange}
                   placeholder="0"
                   min="0"

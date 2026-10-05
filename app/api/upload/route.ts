@@ -50,6 +50,9 @@ export async function POST(request: NextRequest) {
     const fbNewGroupsJoined = parseInt(
       formData.get("fbNewGroupsJoined") as string || "0"
     );
+    const fbPeopleMessaged = parseInt(
+      formData.get("fbPeopleMessaged") as string || "0"
+    );
 
     // Parse Facebook post links
     const fbPostLinks = formData.getAll("fbOwnPostsLinks").filter(
@@ -135,6 +138,7 @@ export async function POST(request: NextRequest) {
         fbCommentLinks: { push: fbCommentLinks },
         fbGroupsShared: { increment: fbGroupsShared },
         fbNewGroupsJoined: { increment: fbNewGroupsJoined },
+        fbPeopleMessaged: { increment: fbPeopleMessaged },
         driveEvidenceFolderUrl: folderUrl,
         observations: mergedObservations,
       },
@@ -151,6 +155,7 @@ export async function POST(request: NextRequest) {
         fbCommentLinks,
         fbGroupsShared,
         fbNewGroupsJoined,
+        fbPeopleMessaged,
         driveEvidenceFolderUrl: folderUrl,
         observations: newObservations || null,
       },

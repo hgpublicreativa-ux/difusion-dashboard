@@ -89,6 +89,7 @@ export async function getAggregatedByUser(
         fbCommentsMade: true,
         fbGroupsShared: true,
         fbNewGroupsJoined: true,
+        fbPeopleMessaged: true,
       },
     });
 
@@ -108,6 +109,7 @@ export async function getAggregatedByUser(
         fbCommentsMade: true,
         fbGroupsShared: true,
         fbNewGroupsJoined: true,
+        fbPeopleMessaged: true,
       },
     });
     const todayMap = new Map(todayAggregated.map((a) => [a.userId, a]));
@@ -149,6 +151,7 @@ export async function getAggregatedByUser(
           fbCommentsMade: agg._sum.fbCommentsMade || 0,
           fbGroupsShared: agg._sum.fbGroupsShared || 0,
           fbNewGroupsJoined: agg._sum.fbNewGroupsJoined || 0,
+          fbPeopleMessaged: agg._sum.fbPeopleMessaged || 0,
         },
         todayTotals: {
           whatsappGroupsReached: today?._sum.whatsappGroupsReached || 0,
@@ -158,6 +161,7 @@ export async function getAggregatedByUser(
           fbCommentsMade: today?._sum.fbCommentsMade || 0,
           fbGroupsShared: today?._sum.fbGroupsShared || 0,
           fbNewGroupsJoined: today?._sum.fbNewGroupsJoined || 0,
+          fbPeopleMessaged: today?._sum.fbPeopleMessaged || 0,
         },
       };
     });
@@ -206,6 +210,7 @@ export async function updateActivityLog(
     fbCommentsMade: number;
     fbGroupsShared: number;
     fbNewGroupsJoined: number;
+    fbPeopleMessaged: number;
     observations?: string | null;
     newPostLinks?: string[];
     newCommentLinks?: string[];
