@@ -11,7 +11,7 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { METRIC_LABELS, COMMENT_LINKS_LABEL } from "@/lib/labels";
-import { formatDay, formatDateTimeEc } from "@/lib/dates";
+import { formatDay, formatDateTimeEc, ecuadorToday } from "@/lib/dates";
 
 interface UserTotals {
   whatsappGroupsReached: number;
@@ -80,6 +80,29 @@ interface DailyLog {
   user: { id: string; name: string };
 }
 
+interface AppliedRange {
+  start: string; // YYYY-MM-DD or "" (no limit)
+  end: string;
+  // true until the admin picks a range: totals cover all history and the
+  // long lists only the last DEFAULT_LIST_DAYS days
+  listsDefault: boolean;
+}
+
+const DEFAULT_LIST_DAYS = 7;
+const DEFAULT_RANGE: AppliedRange = { start: "", end: "", listsDefault: true };
+
+// Move a YYYY-MM-DD date by a number of days
+function shiftDay(ymd: string, days: number): string {
+  const d = new Date(`${ymd}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatDateEs(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 export default function AdminDashboard() {
   const [userAggregates, setUserAggregates] = useState<AggregatedUser[]>([]);
   const [facebookLinks, setFacebookLinks] = useState<FacebookLink[]>([]);
@@ -118,26 +141,32 @@ export default function AdminDashboard() {
   const [newPostLinks, setNewPostLinks] = useState<string[]>([]);
   const [newCommentLinks, setNewCommentLinks] = useState<string[]>([]);
 
+  // Date inputs (what the admin is typing) vs. the range actually loaded
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [applied, setApplied] = useState<AppliedRange>(DEFAULT_RANGE);
 
-  const loadData = async () => {
+  // The long lists (daily history + Facebook links) default to the last
+  // 7 days so the panel stays fast; totals always follow the applied range.
+  const listRange = (range: AppliedRange) =>
+    range.listsDefault
+      ? { start: shiftDay(ecuadorToday(), -(DEFAULT_LIST_DAYS - 1)), end: ecuadorToday() }
+      : { start: range.start, end: range.end };
+
+  const toDate = (ymd: string) => (ymd ? new Date(`${ymd}T00:00:00.000Z`) : undefined);
+
+  const loadData = async (range: AppliedRange = applied) => {
     setIsLoading(true);
     setError("");
 
     try {
-      const startDateObj = startDate ? new Date(startDate) : undefined;
-      const endDateObj = endDate ? new Date(endDate) : undefined;
+      const lists = listRange(range);
 
-      const userResult = await getAggregatedByUser(startDateObj, endDateObj);
-      const linksResult = await getFacebookLinksByDateRange(
-        startDateObj,
-        endDateObj
-      );
-      const logsResult = await getActivityLogsByDateRange(
-        startDateObj,
-        endDateObj
-      );
+      const [userResult, linksResult, logsResult] = await Promise.all([
+        getAggregatedByUser(toDate(range.start), toDate(range.end)),
+        getFacebookLinksByDateRange(toDate(lists.start), toDate(lists.end)),
+        getActivityLogsByDateRange(toDate(lists.start), toDate(lists.end)),
+      ]);
 
       if (userResult.success) {
         setUserAggregates(userResult.data as AggregatedUser[]);
@@ -156,6 +185,8 @@ export default function AdminDashboard() {
       } else {
         setError(logsResult.error || "No se pudo cargar el historial diario");
       }
+
+      setApplied(range);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ocurrió un error");
     } finally {
@@ -164,20 +195,57 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    loadData();
+    loadData(DEFAULT_RANGE);
   }, []);
 
-  const handleFilter = () => {
-    loadData();
+  const applyRange = (start: string, end: string) => {
+    setStartDate(start);
+    setEndDate(end);
+    loadData({ start, end, listsDefault: false });
   };
+
+  const handleFilter = () => {
+    applyRange(startDate, endDate);
+  };
+
+  const today = ecuadorToday();
+  const quickRanges: { key: string; label: string; start: string; end: string }[] = [
+    { key: "today", label: "Hoy", start: today, end: today },
+    { key: "7", label: "Últimos 7 días", start: shiftDay(today, -6), end: today },
+    { key: "30", label: "Últimos 30 días", start: shiftDay(today, -29), end: today },
+    { key: "month", label: "Este mes", start: `${today.slice(0, 8)}01`, end: today },
+    { key: "all", label: "Todo", start: "", end: "" },
+  ];
+  const activeQuickKey = applied.listsDefault
+    ? null
+    : quickRanges.find((r) => r.start === applied.start && r.end === applied.end)?.key ?? null;
+
+  const formatRangeLabel = (start: string, end: string) =>
+    start && end
+      ? start === end
+        ? formatDateEs(start)
+        : `${formatDateEs(start)} - ${formatDateEs(end)}`
+      : start
+      ? `Desde ${formatDateEs(start)}`
+      : end
+      ? `Hasta ${formatDateEs(end)}`
+      : "Histórico completo";
+
+  const totalsRangeLabel = formatRangeLabel(applied.start, applied.end);
+  const currentListRange = listRange(applied);
+  const listsRangeLabel = applied.listsDefault
+    ? `Últimos ${DEFAULT_LIST_DAYS} días (${formatRangeLabel(currentListRange.start, currentListRange.end)})`
+    : formatRangeLabel(currentListRange.start, currentListRange.end);
 
   const handleOpenObservations = async (userId: string, userName: string) => {
     setObservationsUser({ id: userId, name: userName });
     setLoadingObservations(true);
     try {
-      const startDateObj = startDate ? new Date(startDate) : undefined;
-      const endDateObj = endDate ? new Date(endDate) : undefined;
-      const result = await getObservationsByUser(userId, startDateObj, endDateObj);
+      const result = await getObservationsByUser(
+        userId,
+        toDate(applied.start),
+        toDate(applied.end)
+      );
       if (result.success) {
         setObservationsData(result.data as ObservationEntry[]);
       } else {
@@ -275,11 +343,6 @@ export default function AdminDashboard() {
     return new Intl.NumberFormat("es-ES").format(num);
   };
 
-  const formatDateEs = (isoDate: string): string => {
-    const [year, month, day] = isoDate.split("-");
-    return `${day}/${month}/${year}`;
-  };
-
   const MetricCell = ({
     today,
     total,
@@ -302,14 +365,7 @@ export default function AdminDashboard() {
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
 
-    const rangeLabel =
-      startDate && endDate
-        ? `${formatDateEs(startDate)} - ${formatDateEs(endDate)}`
-        : startDate
-        ? `Desde ${formatDateEs(startDate)}`
-        : endDate
-        ? `Hasta ${formatDateEs(endDate)}`
-        : "Histórico completo";
+    const rangeLabel = totalsRangeLabel;
 
     doc.setFontSize(18);
     doc.setTextColor(37, 99, 235);
@@ -399,9 +455,12 @@ export default function AdminDashboard() {
       doc.setFontSize(13);
       doc.setTextColor(30, 30, 30);
       doc.text("Enlaces de Facebook (posts propios y posts en los que se comentó)", 14, afterUserTableY + 12);
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Período de los enlaces: ${listsRangeLabel}`, 14, afterUserTableY + 17);
 
       autoTable(doc, {
-        startY: afterUserTableY + 16,
+        startY: afterUserTableY + 20,
         head: [["Usuario", "Fecha", "Tipo", "Enlace"]],
         body: facebookLinks.map((l) => [
           l.userName,
@@ -416,8 +475,8 @@ export default function AdminDashboard() {
     }
 
     const fileDateLabel =
-      startDate || endDate
-        ? `${startDate || "inicio"}_a_${endDate || "hoy"}`
+      applied.start || applied.end
+        ? `${applied.start || "inicio"}_a_${applied.end || "hoy"}`
         : "historico";
 
     doc.save(`difusion-dashboard-${fileDateLabel}.pdf`);
@@ -449,6 +508,27 @@ export default function AdminDashboard() {
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-5 flex items-center gap-2">
           <span>📅</span> Filtrar por Rango de Fechas
         </h2>
+        <div className="flex flex-wrap gap-2 mb-5">
+          {quickRanges.map((r) => {
+            const isActive = activeQuickKey === r.key;
+            return (
+              <button
+                key={r.key}
+                type="button"
+                onClick={() => applyRange(r.start, r.end)}
+                disabled={isLoading}
+                aria-pressed={isActive}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-colors disabled:opacity-60 ${
+                  isActive
+                    ? "bg-blue-600 border-blue-600 text-white"
+                    : "bg-white border-gray-300 text-gray-700 hover:border-blue-500 hover:text-blue-600"
+                }`}
+              >
+                {r.label}
+              </button>
+            );
+          })}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
             <label className="block text-sm font-semibold text-gray-700">
@@ -492,6 +572,19 @@ export default function AdminDashboard() {
             </button>
           </div>
         </div>
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+          <p className="text-gray-600">
+            <span className="font-semibold text-gray-800">Totales:</span> {totalsRangeLabel}
+          </p>
+          <p className="text-gray-600">
+            <span className="font-semibold text-gray-800">Historial y enlaces:</span> {listsRangeLabel}
+          </p>
+        </div>
+        {applied.listsDefault && (
+          <p className="mt-2 text-xs text-gray-500">
+            Para ver el historial de otras fechas, elige un rango o pulsa “Todo”.
+          </p>
+        )}
       </div>
 
       {/* Summary Stats */}
@@ -664,6 +757,7 @@ export default function AdminDashboard() {
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
             <span>👥</span> Totales por Usuario
           </h2>
+          <p className="text-sm text-gray-500 mt-1">Período: {totalsRangeLabel}</p>
         </div>
 
         <div className="overflow-x-auto">
@@ -797,6 +891,7 @@ export default function AdminDashboard() {
           <p className="text-sm text-gray-500 mt-1">
             Un registro por usuario. Abre el detalle para ver cada día reportado.
           </p>
+          <p className="text-sm text-gray-500">Período: {listsRangeLabel}</p>
         </div>
 
         <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
@@ -979,7 +1074,7 @@ export default function AdminDashboard() {
                 <span>🔗</span> Enlaces de Facebook
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Enlaces agrupados por usuario en el rango de fechas seleccionado
+                Enlaces agrupados por usuario · Período: {listsRangeLabel}
               </p>
             </div>
 

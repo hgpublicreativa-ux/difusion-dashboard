@@ -33,27 +33,15 @@ export default function UserForm({ userName, userId }: UserFormProps) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const MAX_FILES_PER_UPLOAD = 20;
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
 
     if (type === "file") {
       const files = (e.target as HTMLInputElement).files;
       if (files) {
-        const selectedFiles = Array.from(files);
-
-        if (selectedFiles.length > MAX_FILES_PER_UPLOAD) {
-          setError(
-            `Solo puedes subir un máximo de ${MAX_FILES_PER_UPLOAD} archivos a la vez. Se seleccionaron los primeros ${MAX_FILES_PER_UPLOAD}.`
-          );
-        } else {
-          setError("");
-        }
-
         setFormData((prev) => ({
           ...prev,
-          [name]: selectedFiles.slice(0, MAX_FILES_PER_UPLOAD),
+          [name]: Array.from(files),
         }));
       }
     } else {
@@ -486,7 +474,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             className="w-full cursor-pointer"
           />
           <p className="mt-2 text-xs text-green-800">
-            Puedes seleccionar hasta {MAX_FILES_PER_UPLOAD} archivos a la vez.
+            Puedes seleccionar varios archivos a la vez.
           </p>
           {formData.whatsappFiles.length > 0 && (
             <div className="mt-3 p-3 bg-green-100 rounded-lg text-sm text-green-900 font-medium">
@@ -509,7 +497,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
             className="w-full cursor-pointer"
           />
           <p className="mt-2 text-xs text-blue-800">
-            Puedes seleccionar hasta {MAX_FILES_PER_UPLOAD} archivos a la vez.
+            Puedes seleccionar varios archivos a la vez.
           </p>
           {formData.facebookFiles.length > 0 && (
             <div className="mt-3 p-3 bg-blue-100 rounded-lg text-sm text-blue-900 font-medium">

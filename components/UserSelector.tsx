@@ -16,6 +16,7 @@ export default function UserSelector() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     init();
@@ -73,6 +74,14 @@ export default function UserSelector() {
     await init();
   };
 
+  // Accent- and case-insensitive match, so "jose" finds "José"
+  const normalize = (text: string) =>
+    text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  const query = normalize(search);
+  const filteredUsers = query
+    ? users.filter((u) => normalize(u.name).includes(query))
+    : users;
+
   // Once logged in, show the member's daily activity form
   if (loggedUser) {
     return (
@@ -120,8 +129,34 @@ export default function UserSelector() {
             <span className="inline-block animate-spin text-3xl">⏳</span>
           </div>
         ) : users.length > 0 ? (
+          <>
+          <div className="mb-5 space-y-2">
+            <label htmlFor="member-search" className="block text-sm font-semibold text-gray-700">
+              Buscar tu nombre
+            </label>
+            <input
+              id="member-search"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Ej.: María"
+              autoComplete="off"
+            />
+          </div>
+          {filteredUsers.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p className="font-medium">No hay nadie con “{search.trim()}”</p>
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="mt-2 text-sm font-semibold text-blue-700 hover:text-blue-900"
+              >
+                Ver todos los nombres
+              </button>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {users.map((user) => (
+            {filteredUsers.map((user) => (
               <button
                 key={user.id}
                 onClick={() => {
@@ -140,6 +175,8 @@ export default function UserSelector() {
               </button>
             ))}
           </div>
+          )}
+          </>
         ) : (
           <div className="text-center py-12 text-gray-500">
             <p className="text-lg font-medium">No hay usuarios registrados</p>
