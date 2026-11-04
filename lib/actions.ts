@@ -5,7 +5,28 @@ import { hash } from "bcryptjs";
 import { Role } from "@prisma/client";
 import { requireAdmin } from "./auth";
 import { ecuadorTodayRange } from "./dates";
-import { TeamId, isTeamId } from "./teams";
+import { Prisma } from "@prisma/client";
+import {
+  ALL_METRIC_KEYS,
+  LinkKey,
+  MetricKey,
+  TEAMS,
+  TeamId,
+  inputMetrics,
+  isTeamId,
+} from "./teams";
+
+// _sum selector covering every numeric metric column
+const SUM_ALL = Object.fromEntries(ALL_METRIC_KEYS.map((k) => [k, true])) as Record<
+  MetricKey,
+  true
+>;
+
+function toTotals(sum: Partial<Record<MetricKey, number | null>> | undefined) {
+  return Object.fromEntries(
+    ALL_METRIC_KEYS.map((k) => [k, sum?.[k] ?? 0])
+  ) as Record<MetricKey, number>;
+}
 
 export async function createUser(
   name: string,
@@ -85,16 +106,7 @@ export async function getAggregatedByUser(
           ...(endDate && { lte: endDate }),
         },
       },
-      _sum: {
-        whatsappGroupsReached: true,
-        whatsappMessagesPerGroup: true,
-        whatsappPeopleReached: true,
-        fbOwnPostsCreated: true,
-        fbCommentsMade: true,
-        fbGroupsShared: true,
-        fbNewGroupsJoined: true,
-        fbPeopleMessaged: true,
-      },
+      _sum: SUM_ALL,
     });
 
     // Also aggregate just today's entries, regardless of the date filter
@@ -106,16 +118,7 @@ export async function getAggregatedByUser(
         user: { team },
         date: { gte: todayStart, lte: todayEnd },
       },
-      _sum: {
-        whatsappGroupsReached: true,
-        whatsappMessagesPerGroup: true,
-        whatsappPeopleReached: true,
-        fbOwnPostsCreated: true,
-        fbCommentsMade: true,
-        fbGroupsShared: true,
-        fbNewGroupsJoined: true,
-        fbPeopleMessaged: true,
-      },
+      _sum: SUM_ALL,
     });
     const todayMap = new Map(todayAggregated.map((a) => [a.userId, a]));
 
@@ -148,26 +151,8 @@ export async function getAggregatedByUser(
       return {
         user: userMap.get(agg.userId)!,
         hasObservations: observationUserIds.has(agg.userId),
-        totals: {
-          whatsappGroupsReached: agg._sum.whatsappGroupsReached || 0,
-          whatsappMessagesPerGroup: agg._sum.whatsappMessagesPerGroup || 0,
-          whatsappPeopleReached: agg._sum.whatsappPeopleReached || 0,
-          fbOwnPostsCreated: agg._sum.fbOwnPostsCreated || 0,
-          fbCommentsMade: agg._sum.fbCommentsMade || 0,
-          fbGroupsShared: agg._sum.fbGroupsShared || 0,
-          fbNewGroupsJoined: agg._sum.fbNewGroupsJoined || 0,
-          fbPeopleMessaged: agg._sum.fbPeopleMessaged || 0,
-        },
-        todayTotals: {
-          whatsappGroupsReached: today?._sum.whatsappGroupsReached || 0,
-          whatsappMessagesPerGroup: today?._sum.whatsappMessagesPerGroup || 0,
-          whatsappPeopleReached: today?._sum.whatsappPeopleReached || 0,
-          fbOwnPostsCreated: today?._sum.fbOwnPostsCreated || 0,
-          fbCommentsMade: today?._sum.fbCommentsMade || 0,
-          fbGroupsShared: today?._sum.fbGroupsShared || 0,
-          fbNewGroupsJoined: today?._sum.fbNewGroupsJoined || 0,
-          fbPeopleMessaged: today?._sum.fbPeopleMessaged || 0,
-        },
+        totals: toTotals(agg._sum),
+        todayTotals: toTotals(today?._sum),
       };
     });
 
@@ -209,44 +194,56 @@ export async function getObservationsByUser(
 export async function updateActivityLog(
   id: string,
   data: {
-    whatsappGroupsReached: number;
-    whatsappMessagesPerGroup: number;
-    whatsappPeopleReached: number;
-    fbOwnPostsCreated: number;
-    fbCommentsMade: number;
-    fbGroupsShared: number;
-    fbNewGroupsJoined: number;
-    fbPeopleMessaged: number;
+    metrics: Partial<Record<MetricKey, number>>;
     observations?: string | null;
-    newPostLinks?: string[];
-    newCommentLinks?: string[];
+    newLinks?: Partial<Record<LinkKey, string[]>>;
   }
 ) {
   try {
     const team = await requireAdmin();
     const log = await prisma.activityLog.findFirst({
       where: { id, user: { team } },
-      select: { id: true },
     });
     if (!log) {
       return { success: false, error: "Registro no encontrado" };
     }
 
-    const { newPostLinks, newCommentLinks, ...rest } = data;
-    const cleanLinks = (newPostLinks || []).filter((l) => l.trim() !== "");
-    const cleanCommentLinks = (newCommentLinks || []).filter((l) => l.trim() !== "");
+    const config = TEAMS[team];
+    const update: Record<string, unknown> = {
+      observations: data.observations ?? null,
+    };
+
+    // Only this team's typed-in metrics can be edited
+    for (const metric of inputMetrics(team)) {
+      const value = data.metrics[metric.key];
+      if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+        update[metric.key] = Math.floor(value);
+      }
+    }
+
+    // New links are appended, never replacing the ones already saved
+    const added: Partial<Record<LinkKey, number>> = {};
+    for (const list of config.linkLists) {
+      const clean = (data.newLinks?.[list.key] || [])
+        .map((l) => l.trim())
+        .filter((l) => l !== "");
+      if (clean.length > 0) {
+        update[list.key] = { push: clean };
+        added[list.key] = clean.length;
+      }
+    }
+
+    // Derived metrics (e.g. cuentas comentadas) follow their link count
+    for (const metric of config.metrics) {
+      if (metric.derivedFromLinks) {
+        update[metric.key] =
+          log[metric.derivedFromLinks].length + (added[metric.derivedFromLinks] ?? 0);
+      }
+    }
 
     const updated = await prisma.activityLog.update({
       where: { id },
-      data: {
-        ...rest,
-        ...(cleanLinks.length > 0 && {
-          fbOwnPostsLinks: { push: cleanLinks },
-        }),
-        ...(cleanCommentLinks.length > 0 && {
-          fbCommentLinks: { push: cleanCommentLinks },
-        }),
-      },
+      data: update as Prisma.ActivityLogUpdateInput,
     });
 
     return { success: true, data: updated };
@@ -256,12 +253,11 @@ export async function updateActivityLog(
   }
 }
 
-export async function getFacebookLinksByDateRange(
-  startDate?: Date,
-  endDate?: Date
-) {
+// Every link saved by this admin's team in the range, one row per link
+export async function getLinksByDateRange(startDate?: Date, endDate?: Date) {
   try {
     const team = await requireAdmin();
+    const lists = TEAMS[team].linkLists;
     const logs = await prisma.activityLog.findMany({
       where: {
         user: { team },
@@ -269,10 +265,7 @@ export async function getFacebookLinksByDateRange(
           ...(startDate && { gte: startDate }),
           ...(endDate && { lte: endDate }),
         },
-        OR: [
-          { fbOwnPostsLinks: { isEmpty: false } },
-          { fbCommentLinks: { isEmpty: false } },
-        ],
+        OR: lists.map((list) => ({ [list.key]: { isEmpty: false } })),
       },
       include: {
         user: true,
@@ -282,27 +275,22 @@ export async function getFacebookLinksByDateRange(
       },
     });
 
-    const result = logs.flatMap((log) => [
-      ...log.fbOwnPostsLinks.map((link) => ({
-        userId: log.userId,
-        userName: log.user.name,
-        date: log.date,
-        link,
-        kind: "post" as const,
-      })),
-      ...log.fbCommentLinks.map((link) => ({
-        userId: log.userId,
-        userName: log.user.name,
-        date: log.date,
-        link,
-        kind: "comment" as const,
-      })),
-    ]);
+    const result = logs.flatMap((log) =>
+      lists.flatMap((list) =>
+        log[list.key].map((link) => ({
+          userId: log.userId,
+          userName: log.user.name,
+          date: log.date,
+          link,
+          kind: list.key,
+        }))
+      )
+    );
 
     return { success: true, data: result };
   } catch (error) {
-    console.error("Error fetching Facebook links:", error);
-    return { success: false, error: "No se pudieron cargar los enlaces de Facebook" };
+    console.error("Error fetching links:", error);
+    return { success: false, error: "No se pudieron cargar los enlaces" };
   }
 }
 

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createUserFolderStructure, uploadFileToFolder } from "@/lib/drive";
 import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, verifySession } from "@/lib/session";
-import { TEAMS } from "@/lib/teams";
+import { TEAMS, LinkKey, MetricKey } from "@/lib/teams";
+import { Prisma } from "@prisma/client";
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,41 +40,26 @@ export async function POST(request: NextRequest) {
     }
     const evidenceSections = TEAMS[member.team].evidence;
 
-    // Parse form fields for metrics
-    const whatsappGroupsReached = parseInt(
-      formData.get("whatsappGroupsReached") as string || "0"
-    );
-    const whatsappMessagesPerGroup = parseInt(
-      formData.get("whatsappMessagesPerGroup") as string || "0"
-    );
-    const whatsappPeopleReached = parseInt(
-      formData.get("whatsappPeopleReached") as string || "0"
-    );
-    const fbOwnPostsCreated = parseInt(
-      formData.get("fbOwnPostsCreated") as string || "0"
-    );
-    const fbCommentsMade = parseInt(
-      formData.get("fbCommentsMade") as string || "0"
-    );
-    const fbGroupsShared = parseInt(
-      formData.get("fbGroupsShared") as string || "0"
-    );
-    const fbNewGroupsJoined = parseInt(
-      formData.get("fbNewGroupsJoined") as string || "0"
-    );
-    const fbPeopleMessaged = parseInt(
-      formData.get("fbPeopleMessaged") as string || "0"
-    );
+    // Metrics and links this team's form sends; anything else is ignored
+    const teamConfig = TEAMS[member.team];
 
-    // Parse Facebook post links
-    const fbPostLinks = formData.getAll("fbOwnPostsLinks").filter(
-      (link) => link !== ""
-    ) as string[];
+    const links: Partial<Record<LinkKey, string[]>> = {};
+    for (const list of teamConfig.linkLists) {
+      links[list.key] = (formData.getAll(list.key) as string[])
+        .map((l) => l.trim())
+        .filter((l) => l !== "");
+    }
 
-    // Links of the posts the member commented on
-    const fbCommentLinks = formData.getAll("fbCommentLinks").filter(
-      (link) => link !== ""
-    ) as string[];
+    const metrics: Partial<Record<MetricKey, number>> = {};
+    for (const metric of teamConfig.metrics) {
+      if (metric.derivedFromLinks) {
+        // e.g. "cuentas comentadas" = number of links sent
+        metrics[metric.key] = links[metric.derivedFromLinks]?.length ?? 0;
+      } else {
+        const value = parseInt((formData.get(metric.key) as string) || "0");
+        metrics[metric.key] = Number.isFinite(value) && value > 0 ? value : 0;
+      }
+    }
 
     const newObservations = ((formData.get("observations") as string) || "").trim();
 
@@ -127,6 +113,17 @@ export async function POST(request: NextRequest) {
 
     // Upsert: if this user already reported something today, accumulate
     // into that row instead of creating a duplicate for the same day.
+    const incrementData: Prisma.ActivityLogUpdateInput = {};
+    const createData: Record<string, number | string[]> = {};
+    for (const [key, value] of Object.entries(metrics)) {
+      (incrementData as Record<string, unknown>)[key] = { increment: value };
+      createData[key] = value;
+    }
+    for (const [key, list] of Object.entries(links)) {
+      (incrementData as Record<string, unknown>)[key] = { push: list };
+      createData[key] = list;
+    }
+
     const activityLog = await prisma.activityLog.upsert({
       where: {
         userId_date: {
@@ -135,33 +132,15 @@ export async function POST(request: NextRequest) {
         },
       },
       update: {
-        whatsappGroupsReached: { increment: whatsappGroupsReached },
-        whatsappMessagesPerGroup: { increment: whatsappMessagesPerGroup },
-        whatsappPeopleReached: { increment: whatsappPeopleReached },
-        fbOwnPostsCreated: { increment: fbOwnPostsCreated },
-        fbOwnPostsLinks: { push: fbPostLinks },
-        fbCommentsMade: { increment: fbCommentsMade },
-        fbCommentLinks: { push: fbCommentLinks },
-        fbGroupsShared: { increment: fbGroupsShared },
-        fbNewGroupsJoined: { increment: fbNewGroupsJoined },
-        fbPeopleMessaged: { increment: fbPeopleMessaged },
+        ...incrementData,
         driveEvidenceFolderUrl: folderUrl,
         observations: mergedObservations,
       },
       create: {
+        ...createData,
         userId,
         campaignName,
         date: normalizedDate,
-        whatsappGroupsReached,
-        whatsappMessagesPerGroup,
-        whatsappPeopleReached,
-        fbOwnPostsCreated,
-        fbOwnPostsLinks: fbPostLinks,
-        fbCommentsMade,
-        fbCommentLinks,
-        fbGroupsShared,
-        fbNewGroupsJoined,
-        fbPeopleMessaged,
         driveEvidenceFolderUrl: folderUrl,
         observations: newObservations || null,
       },

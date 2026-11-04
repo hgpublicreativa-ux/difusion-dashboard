@@ -76,6 +76,12 @@ model ActivityLog {
   fbNewGroupsJoined       Int      @default(0)
   fbPeopleMessaged        Int      @default(0)
 
+  // TikTok metrics (Team 2). tiktokAccountsCommented always equals the
+  // number of links in tiktokCommentLinks, kept as a column so it can be summed
+  tiktokCommentsMade      Int      @default(0)
+  tiktokCommentLinks      String[] @default([])
+  tiktokAccountsCommented Int      @default(0)
+
   // Drive folder
   driveEvidenceFolderUrl  String?
 

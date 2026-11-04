@@ -3,7 +3,7 @@
 import { METRIC_LABELS, COMMENT_LINKS_LABEL } from "@/lib/labels";
 import { FormEvent, useEffect, useState } from "react";
 import { ecuadorToday } from "@/lib/dates";
-import { TEAMS, TeamId } from "@/lib/teams";
+import { TEAMS, TeamId, inputMetrics } from "@/lib/teams";
 
 interface UserFormProps {
   userName: string;
@@ -78,6 +78,8 @@ export default function UserForm({ userName, userId, team = "TEAM1" }: UserFormP
     fbGroupsShared: "",
     fbNewGroupsJoined: "",
     fbPeopleMessaged: "",
+    tiktokCommentsMade: "",
+    tiktokCommentLinks: [""],
     observations: "",
   });
 
@@ -119,7 +121,7 @@ export default function UserForm({ userName, userId, team = "TEAM1" }: UserFormP
     }));
   };
 
-  type LinkField = "fbOwnPostsLinks" | "fbCommentLinks";
+  type LinkField = "fbOwnPostsLinks" | "fbCommentLinks" | "tiktokCommentLinks";
 
   const handleFbLinksChange = (field: LinkField, index: number, value: string) => {
     setFormData((prev) => {
@@ -145,16 +147,9 @@ export default function UserForm({ userName, userId, team = "TEAM1" }: UserFormP
 
   const validateForm = (): boolean => {
     // Validate numeric fields
-    const numericFields: Record<string, string> = {
-      whatsappGroupsReached: METRIC_LABELS.whatsappGroupsReached,
-      whatsappMessagesPerGroup: METRIC_LABELS.whatsappMessagesPerGroup,
-      whatsappPeopleReached: METRIC_LABELS.whatsappPeopleReached,
-      fbOwnPostsCreated: METRIC_LABELS.fbOwnPostsCreated,
-      fbCommentsMade: METRIC_LABELS.fbCommentsMade,
-      fbGroupsShared: METRIC_LABELS.fbGroupsShared,
-      fbNewGroupsJoined: METRIC_LABELS.fbNewGroupsJoined,
-      fbPeopleMessaged: METRIC_LABELS.fbPeopleMessaged,
-    };
+    const numericFields: Record<string, string> = Object.fromEntries(
+      inputMetrics(team).map((m) => [m.key, m.label])
+    );
 
     for (const [field, label] of Object.entries(numericFields)) {
       const value = formData[field as keyof typeof formData] as string;
@@ -189,31 +184,19 @@ export default function UserForm({ userName, userId, team = "TEAM1" }: UserFormP
       form.append("userName", userName);
       form.append("campaignName", CAMPAIGN_NAME);
       form.append("date", formData.date);
-      form.append("whatsappGroupsReached", formData.whatsappGroupsReached);
-      form.append(
-        "whatsappMessagesPerGroup",
-        formData.whatsappMessagesPerGroup
-      );
-      form.append("whatsappPeopleReached", formData.whatsappPeopleReached);
-      form.append("fbOwnPostsCreated", formData.fbOwnPostsCreated);
-      form.append("fbCommentsMade", formData.fbCommentsMade);
-      form.append("fbGroupsShared", formData.fbGroupsShared);
-      form.append("fbNewGroupsJoined", formData.fbNewGroupsJoined);
-      form.append("fbPeopleMessaged", formData.fbPeopleMessaged);
       form.append("observations", formData.observations);
 
-      // Add Facebook post links
-      formData.fbOwnPostsLinks.forEach((link) => {
-        if (link.trim()) {
-          form.append("fbOwnPostsLinks", link);
-        }
+      // This team's numeric answers
+      const values = formData as unknown as Record<string, string | string[]>;
+      inputMetrics(team).forEach((m) => {
+        form.append(m.key, values[m.key] as string);
       });
 
-      // Add links of the posts the member commented on
-      formData.fbCommentLinks.forEach((link) => {
-        if (link.trim()) {
-          form.append("fbCommentLinks", link);
-        }
+      // This team's link lists (empty fields are skipped)
+      TEAMS[team].linkLists.forEach((list) => {
+        (values[list.key] as string[]).forEach((link) => {
+          if (link.trim()) form.append(list.key, link);
+        });
       });
 
       // Add each evidence section's files under its own field name
@@ -253,6 +236,8 @@ export default function UserForm({ userName, userId, team = "TEAM1" }: UserFormP
         fbGroupsShared: "",
         fbNewGroupsJoined: "",
         fbPeopleMessaged: "",
+        tiktokCommentsMade: "",
+        tiktokCommentLinks: [""],
         observations: "",
       });
     } catch (err) {
@@ -317,6 +302,8 @@ export default function UserForm({ userName, userId, team = "TEAM1" }: UserFormP
           />
         </div>
 
+        {team === "TEAM1" && (
+        <>
         {/* WhatsApp Section */}
         <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-6 border border-green-200">
           <h3 className="text-lg font-bold text-green-900 mb-4 flex items-center gap-2">
@@ -519,6 +506,77 @@ export default function UserForm({ userName, userId, team = "TEAM1" }: UserFormP
             </div>
           </div>
         </div>
+
+        </>
+        )}
+
+        {team === "TEAM2" && (
+          <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-6 border border-pink-200">
+            <h3 className="text-lg font-bold text-pink-900 mb-4 flex items-center gap-2">
+              <span>🎵</span> Métricas TikTok
+            </h3>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="tiktokCommentsMade" className="block text-sm font-semibold text-pink-900">
+                  Cantidad de comentarios realizados
+                </label>
+                <input
+                  id="tiktokCommentsMade"
+                  type="number"
+                  name="tiktokCommentsMade"
+                  value={formData.tiktokCommentsMade}
+                  onChange={handleInputChange}
+                  placeholder="0"
+                  min="0"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-pink-900 mb-1">
+                  Enlaces de las publicaciones en las que comentaste
+                </label>
+                <p className="text-xs text-pink-800 mb-2">
+                  Cada enlace cuenta como una cuenta comentada.
+                </p>
+                {formData.tiktokCommentLinks.map((link, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <input
+                      type="url"
+                      value={link}
+                      aria-label={`Enlace ${index + 1}`}
+                      onChange={(e) => handleFbLinksChange("tiktokCommentLinks", index, e.target.value)}
+                      placeholder="https://www.tiktok.com/@cuenta/video/..."
+                    />
+                    {formData.tiktokCommentLinks.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeFbLinkField("tiktokCommentLinks", index)}
+                        aria-label={`Quitar enlace ${index + 1}`}
+                        className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium transition-colors"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => addFbLinkField("tiktokCommentLinks")}
+                    className="px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-lg hover:from-pink-600 hover:to-rose-700 font-medium transition-all"
+                  >
+                    + Agregar enlace
+                  </button>
+                  <p className="text-sm font-semibold text-pink-900">
+                    Cuentas comentadas: {formData.tiktokCommentLinks.filter((l) => l.trim()).length}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Evidence uploads: one box per section of this team */}
         {evidenceSections.map((section) => {

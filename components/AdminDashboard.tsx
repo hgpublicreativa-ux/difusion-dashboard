@@ -3,27 +3,17 @@
 import { useState, useEffect } from "react";
 import {
   getAggregatedByUser,
-  getFacebookLinksByDateRange,
+  getLinksByDateRange,
   getActivityLogsByDateRange,
   getObservationsByUser,
   updateActivityLog,
 } from "@/lib/actions";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { METRIC_LABELS, COMMENT_LINKS_LABEL } from "@/lib/labels";
 import { formatDay, formatDateTimeEc, ecuadorToday } from "@/lib/dates";
-import { TEAMS, TeamId } from "@/lib/teams";
+import { TEAMS, TeamId, MetricKey, LinkKey, inputMetrics } from "@/lib/teams";
 
-interface UserTotals {
-  whatsappGroupsReached: number;
-  whatsappMessagesPerGroup: number;
-  whatsappPeopleReached: number;
-  fbOwnPostsCreated: number;
-  fbCommentsMade: number;
-  fbGroupsShared: number;
-  fbNewGroupsJoined: number;
-  fbPeopleMessaged: number;
-}
+type UserTotals = Record<MetricKey, number>;
 
 interface AggregatedUser {
   user: {
@@ -44,14 +34,7 @@ interface ObservationEntry {
 }
 
 interface EditFormState {
-  whatsappGroupsReached: string;
-  whatsappMessagesPerGroup: string;
-  whatsappPeopleReached: string;
-  fbOwnPostsCreated: string;
-  fbCommentsMade: string;
-  fbGroupsShared: string;
-  fbNewGroupsJoined: string;
-  fbPeopleMessaged: string;
+  metrics: Partial<Record<MetricKey, string>>;
   observations: string;
 }
 
@@ -60,26 +43,17 @@ interface FacebookLink {
   userName: string;
   date: Date;
   link: string;
-  kind: "post" | "comment";
+  kind: LinkKey;
 }
 
-interface DailyLog {
+type DailyLog = {
   id: string;
   date: Date;
-  whatsappGroupsReached: number;
-  whatsappMessagesPerGroup: number;
-  whatsappPeopleReached: number;
-  fbOwnPostsCreated: number;
-  fbOwnPostsLinks: string[];
-  fbCommentsMade: number;
-  fbCommentLinks: string[];
-  fbGroupsShared: number;
-  fbNewGroupsJoined: number;
-  fbPeopleMessaged: number;
   driveEvidenceFolderUrl: string | null;
   observations: string | null;
   user: { id: string; name: string };
-}
+} & Record<MetricKey, number> &
+  Record<LinkKey, string[]>;
 
 interface AppliedRange {
   start: string; // YYYY-MM-DD or "" (no limit)
@@ -106,6 +80,9 @@ function formatDateEs(isoDate: string): string {
 
 export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
   const teamLabel = team === "TEAM1" ? "" : ` - ${TEAMS[team].label}`;
+  const config = TEAMS[team];
+  const metrics = config.metrics;
+  const linkLists = config.linkLists;
   const [userAggregates, setUserAggregates] = useState<AggregatedUser[]>([]);
   const [facebookLinks, setFacebookLinks] = useState<FacebookLink[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
@@ -129,19 +106,12 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
   // Edit activity log modal
   const [editingLog, setEditingLog] = useState<DailyLog | null>(null);
   const [editFormData, setEditFormData] = useState<EditFormState>({
-    whatsappGroupsReached: "",
-    whatsappMessagesPerGroup: "",
-    whatsappPeopleReached: "",
-    fbOwnPostsCreated: "",
-    fbCommentsMade: "",
-    fbGroupsShared: "",
-    fbNewGroupsJoined: "",
-    fbPeopleMessaged: "",
+    metrics: {},
     observations: "",
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const [newPostLinks, setNewPostLinks] = useState<string[]>([]);
-  const [newCommentLinks, setNewCommentLinks] = useState<string[]>([]);
+  // Extra links typed in the edit modal, per link list
+  const [newLinks, setNewLinks] = useState<Partial<Record<LinkKey, string[]>>>({});
 
   // Date inputs (what the admin is typing) vs. the range actually loaded
   const [startDate, setStartDate] = useState<string>("");
@@ -166,7 +136,7 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
 
       const [userResult, linksResult, logsResult] = await Promise.all([
         getAggregatedByUser(toDate(range.start), toDate(range.end)),
-        getFacebookLinksByDateRange(toDate(lists.start), toDate(lists.end)),
+        getLinksByDateRange(toDate(lists.start), toDate(lists.end)),
         getActivityLogsByDateRange(toDate(lists.start), toDate(lists.end)),
       ]);
 
@@ -179,7 +149,7 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
       if (linksResult.success) {
         setFacebookLinks(linksResult.data as FacebookLink[]);
       } else {
-        setError(linksResult.error || "No se pudieron cargar los enlaces de Facebook");
+        setError(linksResult.error || "No se pudieron cargar los enlaces");
       }
 
       if (logsResult.success) {
@@ -261,50 +231,28 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
   const handleOpenEditLog = (log: DailyLog) => {
     setEditingLog(log);
     setEditFormData({
-      whatsappGroupsReached: String(log.whatsappGroupsReached),
-      whatsappMessagesPerGroup: String(log.whatsappMessagesPerGroup),
-      whatsappPeopleReached: String(log.whatsappPeopleReached),
-      fbOwnPostsCreated: String(log.fbOwnPostsCreated),
-      fbCommentsMade: String(log.fbCommentsMade),
-      fbGroupsShared: String(log.fbGroupsShared),
-      fbNewGroupsJoined: String(log.fbNewGroupsJoined),
-      fbPeopleMessaged: String(log.fbPeopleMessaged),
+      metrics: Object.fromEntries(
+        inputMetrics(team).map((m) => [m.key, String(log[m.key])])
+      ),
       observations: log.observations || "",
     });
-    setNewPostLinks([]);
-    setNewCommentLinks([]);
+    setNewLinks({});
   };
 
-  // How many extra "new link" fields to show: only grows as fbOwnPostsCreated
-  // increases past the log's original value, so existing posts aren't affected.
-  const extraPostsCount = editingLog
-    ? Math.max(
-        0,
-        (parseInt(editFormData.fbOwnPostsCreated) || 0) - editingLog.fbOwnPostsCreated
-      )
-    : 0;
-
-  // Same idea for the posts the member commented on
-  const extraCommentsCount = editingLog
-    ? Math.max(
-        0,
-        (parseInt(editFormData.fbCommentsMade) || 0) - editingLog.fbCommentsMade
-      )
-    : 0;
-
-  const handleNewCommentLinkChange = (index: number, value: string) => {
-    setNewCommentLinks((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
-    });
+  // How many extra "new link" fields to show for a list: only grows as its
+  // count metric increases past the log's original value
+  const extraLinksCount = (listKey: LinkKey): number => {
+    const list = linkLists.find((l) => l.key === listKey);
+    if (!editingLog || !list?.countMetric) return 0;
+    const typed = parseInt(editFormData.metrics[list.countMetric] ?? "") || 0;
+    return Math.max(0, typed - editingLog[list.countMetric]);
   };
 
-  const handleNewPostLinkChange = (index: number, value: string) => {
-    setNewPostLinks((prev) => {
-      const next = [...prev];
+  const handleNewLinkChange = (listKey: LinkKey, index: number, value: string) => {
+    setNewLinks((prev) => {
+      const next = [...(prev[listKey] || [])];
       next[index] = value;
-      return next;
+      return { ...prev, [listKey]: next };
     });
   };
 
@@ -315,23 +263,18 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
     setError("");
     try {
       const result = await updateActivityLog(editingLog.id, {
-        whatsappGroupsReached: parseInt(editFormData.whatsappGroupsReached) || 0,
-        whatsappMessagesPerGroup: parseInt(editFormData.whatsappMessagesPerGroup) || 0,
-        whatsappPeopleReached: parseInt(editFormData.whatsappPeopleReached) || 0,
-        fbOwnPostsCreated: parseInt(editFormData.fbOwnPostsCreated) || 0,
-        fbCommentsMade: parseInt(editFormData.fbCommentsMade) || 0,
-        fbGroupsShared: parseInt(editFormData.fbGroupsShared) || 0,
-        fbNewGroupsJoined: parseInt(editFormData.fbNewGroupsJoined) || 0,
-        fbPeopleMessaged: parseInt(editFormData.fbPeopleMessaged) || 0,
+        metrics: Object.fromEntries(
+          inputMetrics(team).map((m) => [m.key, parseInt(editFormData.metrics[m.key] ?? "") || 0])
+        ),
         observations: editFormData.observations.trim() || null,
-        newPostLinks: newPostLinks.slice(0, extraPostsCount),
-        newCommentLinks: newCommentLinks.slice(0, extraCommentsCount),
+        newLinks: Object.fromEntries(
+          linkLists.map((l) => [l.key, (newLinks[l.key] || []).slice(0, extraLinksCount(l.key))])
+        ),
       });
 
       if (result.success) {
         setEditingLog(null);
-        setNewPostLinks([]);
-        setNewCommentLinks([]);
+        setNewLinks({});
         await loadData();
       } else {
         setError(result.error || "No se pudo actualizar el registro");
@@ -382,67 +325,25 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
       32
     );
 
-    const totalGroups = userAggregates.reduce(
-      (sum, u) => sum + u.totals.whatsappGroupsReached,
-      0
-    );
-    const totalMessages = userAggregates.reduce(
-      (sum, u) => sum + u.totals.whatsappMessagesPerGroup,
-      0
-    );
-    const totalPeople = userAggregates.reduce(
-      (sum, u) => sum + u.totals.whatsappPeopleReached,
-      0
-    );
-    const totalFbPosts = userAggregates.reduce(
-      (sum, u) => sum + u.totals.fbOwnPostsCreated,
-      0
-    );
-    const totalFbComments = userAggregates.reduce(
-      (sum, u) => sum + u.totals.fbCommentsMade,
-      0
-    );
-    const totalFbGroupsShared = userAggregates.reduce(
-      (sum, u) => sum + u.totals.fbGroupsShared,
-      0
-    );
-    const totalFbNewGroups = userAggregates.reduce(
-      (sum, u) => sum + u.totals.fbNewGroupsJoined,
-      0
-    );
-    const totalFbPeople = userAggregates.reduce(
-      (sum, u) => sum + u.totals.fbPeopleMessaged,
-      0
-    );
+    const summary: [string, number][] = metrics.map((m) => [
+      m.label,
+      userAggregates.reduce((sum, u) => sum + u.totals[m.key], 0),
+    ]);
 
     doc.setFontSize(10);
     doc.setTextColor(30, 30, 30);
-    const summary: [string, number][] = [
-      [METRIC_LABELS.whatsappGroupsReached, totalGroups],
-      [METRIC_LABELS.whatsappMessagesPerGroup, totalMessages],
-      [METRIC_LABELS.whatsappPeopleReached, totalPeople],
-      [METRIC_LABELS.fbOwnPostsCreated, totalFbPosts],
-      [METRIC_LABELS.fbCommentsMade, totalFbComments],
-      [METRIC_LABELS.fbGroupsShared, totalFbGroupsShared],
-      [METRIC_LABELS.fbNewGroupsJoined, totalFbNewGroups],
-      [METRIC_LABELS.fbPeopleMessaged, totalFbPeople],
-    ];
     summary.forEach(([label, value], i) => {
       doc.text(`${label}: ${formatNumber(value)}`, 14, 40 + i * 5);
     });
 
     autoTable(doc, {
       startY: 40 + summary.length * 5 + 2,
-      head: [["Usuario", ...summary.map(([label]) => label)]],
+      head: [["Usuario", ...metrics.map((m) => m.label)]],
       body: userAggregates.map((u) => [
         u.user.name,
-        `${formatNumber(u.totals.whatsappGroupsReached)} (hoy: ${formatNumber(u.todayTotals.whatsappGroupsReached)})`,
-        `${formatNumber(u.totals.whatsappMessagesPerGroup)} (hoy: ${formatNumber(u.todayTotals.whatsappMessagesPerGroup)})`,
-        `${formatNumber(u.totals.whatsappPeopleReached)} (hoy: ${formatNumber(u.todayTotals.whatsappPeopleReached)})`,
-        `${formatNumber(u.totals.fbOwnPostsCreated)} (hoy: ${formatNumber(u.todayTotals.fbOwnPostsCreated)})`,
-        `${formatNumber(u.totals.fbCommentsMade)} (hoy: ${formatNumber(u.todayTotals.fbCommentsMade)})`,
-        `${formatNumber(u.totals.fbGroupsShared)} (hoy: ${formatNumber(u.todayTotals.fbGroupsShared)})`,
-        `${formatNumber(u.totals.fbNewGroupsJoined)} (hoy: ${formatNumber(u.todayTotals.fbNewGroupsJoined)})`,
+        ...metrics.map(
+          (m) => `${formatNumber(u.totals[m.key])} (hoy: ${formatNumber(u.todayTotals[m.key])})`
+        ),
       ]),
       headStyles: { fillColor: [37, 99, 235] },
       styles: { fontSize: 8 },
@@ -456,7 +357,7 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
     if (facebookLinks.length > 0) {
       doc.setFontSize(13);
       doc.setTextColor(30, 30, 30);
-      doc.text("Enlaces de Facebook (posts propios y posts en los que se comentó)", 14, afterUserTableY + 12);
+      doc.text(config.linksTitle, 14, afterUserTableY + 12);
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
       doc.text(`Período de los enlaces: ${listsRangeLabel}`, 14, afterUserTableY + 17);
@@ -467,7 +368,7 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
         body: facebookLinks.map((l) => [
           l.userName,
           formatDay(l.date),
-          l.kind === "post" ? "Post propio" : "Post en el que se comentó",
+          linkLists.find((list) => list.key === l.kind)?.pdfLabel ?? "",
           l.link,
         ]),
         headStyles: { fillColor: [147, 51, 234] },
@@ -591,87 +492,13 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
 
       {/* Summary Stats */}
       {userAggregates.length > 0 && (() => {
-        const totals = userAggregates.reduce(
-          (acc, user) => ({
-            groups: acc.groups + user.totals.whatsappGroupsReached,
-            messages: acc.messages + user.totals.whatsappMessagesPerGroup,
-            people: acc.people + user.totals.whatsappPeopleReached,
-            fbPosts: acc.fbPosts + user.totals.fbOwnPostsCreated,
-            fbComments: acc.fbComments + user.totals.fbCommentsMade,
-            fbGroupsShared: acc.fbGroupsShared + user.totals.fbGroupsShared,
-            fbNewGroups: acc.fbNewGroups + user.totals.fbNewGroupsJoined,
-            fbPeople: acc.fbPeople + user.totals.fbPeopleMessaged,
-          }),
-          {
-            groups: 0,
-            messages: 0,
-            people: 0,
-            fbPosts: 0,
-            fbComments: 0,
-            fbGroupsShared: 0,
-            fbNewGroups: 0,
-            fbPeople: 0,
-          }
-        );
-
-        const cards = [
-          {
-            icon: "📱",
-            label: "Total de grupos a los que se enviaron mensajes",
-            value: totals.groups,
-            unit: "grupos de WhatsApp",
-            color: "blue",
-          },
-          {
-            icon: "💬",
-            label: "Cantidad total de mensajes enviados durante el período de reporte",
-            value: totals.messages,
-            unit: "mensajes a grupos de WhatsApp",
-            color: "green",
-          },
-          {
-            icon: "👥",
-            label: "Total de personas individuales a las que se enviaron mensajes de WhatsApp (no grupos)",
-            value: totals.people,
-            unit: "personas por WhatsApp",
-            color: "teal",
-          },
-          {
-            icon: "📝",
-            label: "Total de posts creados en las páginas asignadas",
-            value: totals.fbPosts,
-            unit: "posts de Facebook",
-            color: "indigo",
-          },
-          {
-            icon: "💭",
-            label: "Total de comentarios realizados",
-            value: totals.fbComments,
-            unit: "comentarios de Facebook",
-            color: "purple",
-          },
-          {
-            icon: "🔗",
-            label: "Cantidad de grupos en los que se compartió contenido",
-            value: totals.fbGroupsShared,
-            unit: "grupos de Facebook",
-            color: "pink",
-          },
-          {
-            icon: "✨",
-            label: "Cantidad de grupos a los que se unieron",
-            value: totals.fbNewGroups,
-            unit: "grupos nuevos de Facebook",
-            color: "amber",
-          },
-          {
-            icon: "📩",
-            label: "Total de personas individuales a las que se enviaron mensajes de Facebook directo (no grupos)",
-            value: totals.fbPeople,
-            unit: "personas por Facebook",
-            color: "teal",
-          },
-        ];
+        const cards = metrics.map((m) => ({
+          icon: m.icon,
+          label: m.cardLabel,
+          value: userAggregates.reduce((sum, u) => sum + u.totals[m.key], 0),
+          unit: m.unit,
+          color: m.color,
+        }));
 
         const colorClasses: Record<
           string,
@@ -769,30 +596,11 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
                 <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-700">
                   Usuario
                 </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  {METRIC_LABELS.whatsappGroupsReached}
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  {METRIC_LABELS.whatsappMessagesPerGroup}
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  {METRIC_LABELS.whatsappPeopleReached}
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  {METRIC_LABELS.fbOwnPostsCreated}
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  {METRIC_LABELS.fbCommentsMade}
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  {METRIC_LABELS.fbGroupsShared}
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  {METRIC_LABELS.fbNewGroupsJoined}
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
-                  {METRIC_LABELS.fbPeopleMessaged}
-                </th>
+                {metrics.map((m) => (
+                  <th key={m.key} className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
+                    {m.label}
+                  </th>
+                ))}
                 <th className="px-3 sm:px-6 py-3 text-center font-semibold text-gray-700">
                   Drive
                 </th>
@@ -820,39 +628,14 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
                           </button>
                         </div>
                       </td>
-                      <MetricCell
-                        today={user.todayTotals.whatsappGroupsReached}
-                        total={user.totals.whatsappGroupsReached}
-                      />
-                      <MetricCell
-                        today={user.todayTotals.whatsappMessagesPerGroup}
-                        total={user.totals.whatsappMessagesPerGroup}
-                        highlight
-                      />
-                      <MetricCell
-                        today={user.todayTotals.whatsappPeopleReached}
-                        total={user.totals.whatsappPeopleReached}
-                      />
-                      <MetricCell
-                        today={user.todayTotals.fbOwnPostsCreated}
-                        total={user.totals.fbOwnPostsCreated}
-                      />
-                      <MetricCell
-                        today={user.todayTotals.fbCommentsMade}
-                        total={user.totals.fbCommentsMade}
-                      />
-                      <MetricCell
-                        today={user.todayTotals.fbGroupsShared}
-                        total={user.totals.fbGroupsShared}
-                      />
-                      <MetricCell
-                        today={user.todayTotals.fbNewGroupsJoined}
-                        total={user.totals.fbNewGroupsJoined}
-                      />
-                      <MetricCell
-                        today={user.todayTotals.fbPeopleMessaged}
-                        total={user.totals.fbPeopleMessaged}
-                      />
+                      {metrics.map((m) => (
+                        <MetricCell
+                          key={m.key}
+                          today={user.todayTotals[m.key]}
+                          total={user.totals[m.key]}
+                          highlight={m.highlight}
+                        />
+                      ))}
                       <td className="px-3 sm:px-6 py-4 text-center">
                         {user.user.driveFolderUrl ? (
                           <a
@@ -874,7 +657,7 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-3 sm:px-6 py-8 text-center text-gray-500">
+                  <td colSpan={metrics.length + 2} className="px-3 sm:px-6 py-8 text-center text-gray-500">
                     No hay datos para el rango de fechas seleccionado
                   </td>
                 </tr>
@@ -980,16 +763,7 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
 
                 return logs.map((log) => {
                   const isOpen = openDates.has(log.id);
-                  const rows: { label: string; value: number }[] = [
-                    { label: METRIC_LABELS.whatsappGroupsReached, value: log.whatsappGroupsReached },
-                    { label: METRIC_LABELS.whatsappMessagesPerGroup, value: log.whatsappMessagesPerGroup },
-                    { label: METRIC_LABELS.whatsappPeopleReached, value: log.whatsappPeopleReached },
-                    { label: METRIC_LABELS.fbOwnPostsCreated, value: log.fbOwnPostsCreated },
-                    { label: METRIC_LABELS.fbCommentsMade, value: log.fbCommentsMade },
-                    { label: METRIC_LABELS.fbGroupsShared, value: log.fbGroupsShared },
-                    { label: METRIC_LABELS.fbNewGroupsJoined, value: log.fbNewGroupsJoined },
-                    { label: METRIC_LABELS.fbPeopleMessaged, value: log.fbPeopleMessaged },
-                  ];
+                  const rows = metrics.map((m) => ({ label: m.label, value: log[m.key] }));
 
                   return (
                     <div key={log.id} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -1073,7 +847,7 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
             <div className="px-3 sm:px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <span>🔗</span> Enlaces de Facebook
+                <span>🔗</span> {config.linksTitle}
               </h2>
               <p className="text-sm text-gray-500 mt-1">
                 Enlaces agrupados por usuario · Período: {listsRangeLabel}
@@ -1090,8 +864,9 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
                     <div>
                       <p className="font-semibold text-gray-900">{u.userName}</p>
                       <p className="text-sm text-gray-500">
-                        {u.links.filter((l) => l.kind === "post").length} post(s) propio(s) ·{" "}
-                        {u.links.filter((l) => l.kind === "comment").length} post(s) comentado(s)
+                        {linkLists
+                          .map((list) => `${u.links.filter((l) => l.kind === list.key).length} ${list.summaryLabel}`)
+                          .join(" · ")}
                       </p>
                     </div>
                     <button
@@ -1107,7 +882,7 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
                 ))
               ) : (
                 <p className="text-center text-gray-500 py-8">
-                  No hay enlaces de Facebook para el rango de fechas seleccionado
+                  No hay enlaces para el rango de fechas seleccionado
                 </p>
               )}
             </div>
@@ -1151,8 +926,10 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
 
                 return Array.from(byDate.entries()).map(([dateLabel, items]) => {
                   const isOpen = openDates.has(dateLabel);
-                  const posts = items.filter((l) => l.kind === "post");
-                  const comments = items.filter((l) => l.kind === "comment");
+                  const sections = linkLists.map((list) => ({
+                    list,
+                    items: items.filter((l) => l.kind === list.key),
+                  }));
 
                   return (
                     <div key={dateLabel} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -1167,22 +944,21 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
                       >
                         <span className="font-semibold text-gray-900">📅 {dateLabel}</span>
                         <span className="flex items-center gap-2 text-xs text-gray-600">
-                          <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
-                            📝 {posts.length}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
-                            💬 {comments.length}
-                          </span>
+                          {sections.map(({ list, items: listItems }) => (
+                            <span key={list.key} className={`px-2 py-0.5 rounded-full ${list.badgeClass}`}>
+                              {list.icon} {listItems.length}
+                            </span>
+                          ))}
                           <span className={`transition-transform ${isOpen ? "rotate-180" : ""}`}>▾</span>
                         </span>
                       </button>
 
                       {isOpen && (
                         <div className="p-4 space-y-4">
-                          {([
-                            { title: "📝 Posts propios", list: posts },
-                            { title: `💬 ${COMMENT_LINKS_LABEL}`, list: comments },
-                          ]).map((section) => (
+                          {sections.map(({ list, items: listItems }) => ({
+                            title: `${list.icon} ${list.title}`,
+                            list: listItems,
+                          })).map((section) => (
                             <div key={section.title} className="space-y-2">
                               <h4 className="text-sm font-bold text-gray-700">
                                 {section.title} ({section.list.length})
@@ -1283,187 +1059,73 @@ export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-gray-700">
-                    {METRIC_LABELS.whatsappGroupsReached}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editFormData.whatsappGroupsReached}
-                    onChange={(e) =>
-                      setEditFormData((p) => ({ ...p, whatsappGroupsReached: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-gray-700">
-                    {METRIC_LABELS.whatsappMessagesPerGroup}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editFormData.whatsappMessagesPerGroup}
-                    onChange={(e) =>
-                      setEditFormData((p) => ({ ...p, whatsappMessagesPerGroup: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-gray-700">
-                    {METRIC_LABELS.whatsappPeopleReached}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editFormData.whatsappPeopleReached}
-                    onChange={(e) =>
-                      setEditFormData((p) => ({ ...p, whatsappPeopleReached: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-gray-700">
-                    {METRIC_LABELS.fbOwnPostsCreated}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editFormData.fbOwnPostsCreated}
-                    onChange={(e) =>
-                      setEditFormData((p) => ({ ...p, fbOwnPostsCreated: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-gray-700">
-                    {METRIC_LABELS.fbCommentsMade}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editFormData.fbCommentsMade}
-                    onChange={(e) =>
-                      setEditFormData((p) => ({ ...p, fbCommentsMade: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-gray-700">
-                    {METRIC_LABELS.fbGroupsShared}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editFormData.fbGroupsShared}
-                    onChange={(e) =>
-                      setEditFormData((p) => ({ ...p, fbGroupsShared: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-gray-700">
-                    {METRIC_LABELS.fbNewGroupsJoined}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editFormData.fbNewGroupsJoined}
-                    onChange={(e) =>
-                      setEditFormData((p) => ({ ...p, fbNewGroupsJoined: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-gray-700">
-                    {METRIC_LABELS.fbPeopleMessaged}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editFormData.fbPeopleMessaged}
-                    onChange={(e) =>
-                      setEditFormData((p) => ({ ...p, fbPeopleMessaged: e.target.value }))
-                    }
-                  />
-                </div>
+                {inputMetrics(team).map((m) => (
+                  <div key={m.key} className="space-y-1">
+                    <label htmlFor={`edit-${m.key}`} className="block text-xs font-semibold text-gray-700">
+                      {m.label}
+                    </label>
+                    <input
+                      id={`edit-${m.key}`}
+                      type="number"
+                      min="0"
+                      value={editFormData.metrics[m.key] ?? ""}
+                      onChange={(e) =>
+                        setEditFormData((p) => ({
+                          ...p,
+                          metrics: { ...p.metrics, [m.key]: e.target.value },
+                        }))
+                      }
+                    />
+                  </div>
+                ))}
               </div>
 
-              {editingLog && editingLog.fbOwnPostsLinks.length > 0 && (
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-gray-700">
-                    Enlaces de posts ya registrados
-                  </label>
-                  <div className="space-y-1">
-                    {editingLog.fbOwnPostsLinks.map((link, i) => (
-                      <a
-                        key={i}
-                        href={link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block text-xs text-blue-600 hover:underline break-all"
-                      >
-                        {link}
-                      </a>
-                    ))}
+              {linkLists.map((list) => {
+                const saved = editingLog[list.key];
+                const extra = extraLinksCount(list.key);
+                const countLabel = metrics.find((m) => m.key === list.countMetric)?.label;
+                return (
+                  <div key={list.key} className="space-y-3">
+                    {saved.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="block text-xs font-semibold text-gray-700">
+                          {list.title} (ya registrados: {saved.length})
+                        </p>
+                        <div className="space-y-1">
+                          {saved.map((link, i) => (
+                            <a
+                              key={i}
+                              href={link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block text-xs text-blue-600 hover:underline break-all"
+                            >
+                              {link}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {extra > 0 && (
+                      <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="block text-xs font-semibold text-amber-900">
+                          Aumentaste “{countLabel}” en {extra}: agrega {extra === 1 ? "su enlace" : "sus enlaces"} (opcional)
+                        </p>
+                        {Array.from({ length: extra }).map((_, i) => (
+                          <input
+                            key={i}
+                            type="url"
+                            aria-label={`Nuevo enlace ${i + 1}`}
+                            placeholder={list.placeholder}
+                            value={newLinks[list.key]?.[i] || ""}
+                            onChange={(e) => handleNewLinkChange(list.key, i, e.target.value)}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-
-              {extraPostsCount > 0 && (
-                <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <label className="block text-xs font-semibold text-amber-900">
-                    Aumentaste FB Posts en {extraPostsCount} — agrega {extraPostsCount === 1 ? "su enlace" : "sus enlaces"} (opcional)
-                  </label>
-                  {Array.from({ length: extraPostsCount }).map((_, i) => (
-                    <input
-                      key={i}
-                      type="url"
-                      placeholder="https://facebook.com/..."
-                      value={newPostLinks[i] || ""}
-                      onChange={(e) => handleNewPostLinkChange(i, e.target.value)}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {editingLog && editingLog.fbCommentLinks.length > 0 && (
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-gray-700">
-                    {COMMENT_LINKS_LABEL} (ya registrados)
-                  </label>
-                  <div className="space-y-1">
-                    {editingLog.fbCommentLinks.map((link, i) => (
-                      <a
-                        key={i}
-                        href={link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block text-xs text-blue-600 hover:underline break-all"
-                      >
-                        {link}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {extraCommentsCount > 0 && (
-                <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <label className="block text-xs font-semibold text-amber-900">
-                    Aumentaste FB Comentarios en {extraCommentsCount} — agrega {extraCommentsCount === 1 ? "el enlace del post comentado" : "los enlaces de los posts comentados"} (opcional)
-                  </label>
-                  {Array.from({ length: extraCommentsCount }).map((_, i) => (
-                    <input
-                      key={i}
-                      type="url"
-                      placeholder="https://facebook.com/..."
-                      value={newCommentLinks[i] || ""}
-                      onChange={(e) => handleNewCommentLinkChange(i, e.target.value)}
-                    />
-                  ))}
-                </div>
-              )}
+                );
+              })}
 
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-700">
