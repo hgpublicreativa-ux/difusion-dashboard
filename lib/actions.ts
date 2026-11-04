@@ -2,6 +2,8 @@
 
 import { prisma } from "./db";
 import { hash } from "bcryptjs";
+import { randomBytes } from "crypto";
+import { cleanName, cleanPhone, nameKey } from "./importUsers";
 import { Role } from "@prisma/client";
 import { requireAdmin } from "./auth";
 import { ecuadorTodayRange } from "./dates";
@@ -30,7 +32,7 @@ function toTotals(sum: Partial<Record<MetricKey, number | null>> | undefined) {
 
 export async function createUser(
   name: string,
-  email: string,
+  email: string | null,
   password: string,
   role: Role = "USER",
   phone?: string
@@ -43,7 +45,7 @@ export async function createUser(
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        email: email?.trim() || null,
         password: hashedPassword,
         role,
         team,
@@ -412,5 +414,61 @@ export async function getUserDirectory(team: TeamId = "TEAM1") {
   } catch (error) {
     console.error("Error fetching user directory:", error);
     return { success: false, error: "No se pudieron cargar los usuarios" };
+  }
+}
+
+// Bulk-creates members of the admin's team from a pasted list. Each gets a
+// random password nobody knows until "Enviar accesos" (or the admin) sets
+// one. Names already used by anyone (in any team) are skipped so two people
+// never share a Drive folder.
+export async function importUsers(rows: { name: string; phone: string }[]) {
+  try {
+    const team = await requireAdmin();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return { success: false, error: "La lista está vacía" };
+    }
+    if (rows.length > 1000) {
+      return { success: false, error: "Máximo 1000 personas por importación" };
+    }
+
+    const existing = await prisma.user.findMany({ select: { name: true } });
+    const taken = new Set(existing.map((u) => nameKey(u.name)));
+
+    const created: string[] = [];
+    const skipped: { name: string; reason: string }[] = [];
+
+    for (const row of rows) {
+      const name = cleanName(String(row.name || ""));
+      const phone = cleanPhone(String(row.phone || ""));
+      if (!name) {
+        skipped.push({ name: "(sin nombre)", reason: "Sin nombre" });
+        continue;
+      }
+      if (taken.has(nameKey(name))) {
+        skipped.push({ name, reason: "Ya existe un usuario con ese nombre" });
+        continue;
+      }
+
+      await prisma.user.create({
+        data: {
+          name,
+          email: null,
+          password: await hash(randomBytes(24).toString("hex"), 10),
+          role: "USER",
+          team,
+          phone: phone || null,
+          ...(phone && {
+            phoneChanges: { create: { oldPhone: null, newPhone: phone } },
+          }),
+        },
+      });
+      taken.add(nameKey(name));
+      created.push(name);
+    }
+
+    return { success: true, created, skipped };
+  } catch (error) {
+    console.error("Error importing users:", error);
+    return { success: false, error: "No se pudo completar la importación" };
   }
 }

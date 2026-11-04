@@ -19,7 +19,7 @@ interface AggregatedUser {
   user: {
     id: string;
     name: string;
-    email: string;
+    email: string | null;
     driveFolderUrl: string | null;
   };
   hasObservations: boolean;

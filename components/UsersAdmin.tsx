@@ -11,6 +11,7 @@ import {
 import type { User, PhoneChange } from "@prisma/client";
 import { setUserPassword } from "@/lib/auth";
 import AdminNav from "@/components/AdminNav";
+import ImportUsers from "@/components/ImportUsers";
 import { TEAMS, TeamId } from "@/lib/teams";
 import { formatDateEc, formatDateTimeEc } from "@/lib/dates";
 
@@ -78,13 +79,13 @@ export default function UsersAdmin({ team = "TEAM1" }: { team?: TeamId }) {
     setIsLoading(true);
 
     try {
-      if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
-        setError("Nombre, email y contraseña son obligatorios");
+      if (!formData.name.trim() || !formData.password.trim()) {
+        setError("Nombre y contraseña son obligatorios");
         setIsLoading(false);
         return;
       }
 
-      if (!formData.email.includes("@")) {
+      if (formData.email.trim() && !formData.email.includes("@")) {
         setError("El email no tiene un formato válido");
         setIsLoading(false);
         return;
@@ -253,7 +254,7 @@ export default function UsersAdmin({ team = "TEAM1" }: { team?: TeamId }) {
 
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-gray-700">
-                  📧 Email
+                  📧 Email <span className="font-normal text-gray-400">(opcional)</span>
                 </label>
                 <input
                   type="email"
@@ -261,7 +262,6 @@ export default function UsersAdmin({ team = "TEAM1" }: { team?: TeamId }) {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="usuario@example.com"
-                  required
                 />
               </div>
 
@@ -311,6 +311,9 @@ export default function UsersAdmin({ team = "TEAM1" }: { team?: TeamId }) {
             </form>
           </div>
 
+          {/* Bulk import from a pasted list */}
+          <ImportUsers existingNames={users.map((u) => u.name)} onImported={loadUsers} />
+
           {/* Users List */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
             <div className="px-3 sm:px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50">
@@ -352,7 +355,7 @@ export default function UsersAdmin({ team = "TEAM1" }: { team?: TeamId }) {
                           {user.name}
                         </td>
                         <td className="px-3 sm:px-6 py-4 text-gray-700">
-                          {user.email}
+                          {user.email || <span className="text-gray-400">Sin correo</span>}
                         </td>
                         <td className="px-3 sm:px-6 py-4 text-gray-700 whitespace-nowrap">
                           {user.phone || (
@@ -424,7 +427,7 @@ export default function UsersAdmin({ team = "TEAM1" }: { team?: TeamId }) {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-semibold text-gray-900">{user.name}</p>
-                        <p className="text-sm text-gray-600 break-all">{user.email}</p>
+                        <p className="text-sm text-gray-600 break-all">{user.email || "Sin correo"}</p>
                         <p className="text-sm text-gray-600">
                           📱{" "}
                           {user.phone || (
@@ -644,7 +647,7 @@ export default function UsersAdmin({ team = "TEAM1" }: { team?: TeamId }) {
             </div>
 
             <p className="text-gray-700 mb-2">
-              ¿Estás seguro de eliminar a <span className="font-semibold">{userToDelete.name}</span> ({userToDelete.email})?
+              ¿Estás seguro de eliminar a <span className="font-semibold">{userToDelete.name}</span> {userToDelete.email ? ` (${userToDelete.email})` : ""}?
             </p>
             <p className="text-sm text-red-600 mb-6">
               Esta acción también eliminará todos sus registros de actividad. No se puede deshacer.
