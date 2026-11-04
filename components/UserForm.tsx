@@ -1,7 +1,7 @@
 "use client";
 
 import { METRIC_LABELS, COMMENT_LINKS_LABEL } from "@/lib/labels";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { ecuadorToday } from "@/lib/dates";
 
 interface UserFormProps {
@@ -11,8 +11,56 @@ interface UserFormProps {
 
 const CAMPAIGN_NAME = "Difusión General";
 
+// Phases of the full-screen sending overlay
+type SendPhase =
+  | { kind: "idle" }
+  | { kind: "uploading"; loaded: number; total: number }
+  | { kind: "saving" }
+  | { kind: "done"; message: string };
+
+function formatMB(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toLocaleString("es-ES", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} MB`;
+}
+
+// fetch() can't report upload progress, so the report is sent with XHR
+function sendWithProgress(
+  form: FormData,
+  onProgress: (loaded: number, total: number) => void,
+  onUploaded: () => void
+): Promise<{ ok: boolean; data: { error?: string; message?: string } }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/upload");
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(e.loaded, e.total);
+    };
+    // Every byte reached the server; it is now copying the files to Drive
+    xhr.upload.onload = onUploaded;
+    xhr.onload = () => {
+      let data: { error?: string; message?: string } = {};
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        data = { error: "Respuesta inesperada del servidor" };
+      }
+      resolve({ ok: xhr.status >= 200 && xhr.status < 300, data });
+    };
+    xhr.onerror = () =>
+      reject(new Error("Se perdió la conexión mientras se enviaba el reporte. Revisa tu internet e inténtalo de nuevo."));
+    xhr.ontimeout = () =>
+      reject(new Error("El envío tardó demasiado. Inténtalo de nuevo con menos archivos."));
+    xhr.send(form);
+  });
+}
+
 export default function UserForm({ userName, userId }: UserFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [phase, setPhase] = useState<SendPhase>({ kind: "idle" });
+  // Bumped after a successful send to clear the native file inputs
+  const [fileInputsKey, setFileInputsKey] = useState(0);
   const [formData, setFormData] = useState({
     date: ecuadorToday(),
     whatsappGroupsReached: "",
@@ -32,6 +80,17 @@ export default function UserForm({ userName, userId }: UserFormProps) {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Warn before closing or reloading the page while the report is sending
+  useEffect(() => {
+    if (!isLoading) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isLoading]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -167,20 +226,21 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         form.append("facebookFiles", file);
       });
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: form,
-      });
+      setPhase({ kind: "uploading", loaded: 0, total: 0 });
+      const { ok, data } = await sendWithProgress(
+        form,
+        (loaded, total) => setPhase({ kind: "uploading", loaded, total }),
+        () => setPhase({ kind: "saving" })
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "No se pudo enviar el registro");
+      if (!ok) {
+        throw new Error(data.error || "No se pudo enviar el registro");
       }
 
-      const data = await response.json();
-      setSuccess(
-        `¡Actividad registrada! ${data.message}`
-      );
+      const message = `¡Actividad registrada! ${data.message ?? ""}`.trim();
+      setSuccess(message);
+      setPhase({ kind: "done", message });
+      setFileInputsKey((k) => k + 1);
 
       // Reset form
       setFormData({
@@ -200,11 +260,15 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         observations: "",
       });
     } catch (err) {
+      setPhase({ kind: "idle" });
       setError(err instanceof Error ? err.message : "Ocurrió un error");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setIsLoading(false);
     }
   };
+
+  const totalFiles = formData.whatsappFiles.length + formData.facebookFiles.length;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -467,6 +531,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
           </label>
           <input
             type="file"
+            key={`wa-${fileInputsKey}`}
             name="whatsappFiles"
             multiple
             onChange={handleInputChange}
@@ -490,6 +555,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
           </label>
           <input
             type="file"
+            key={`fb-${fileInputsKey}`}
             name="facebookFiles"
             multiple
             onChange={handleInputChange}
@@ -540,6 +606,88 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         </button>
         </form>
       </div>
+      {/* Full-screen sending overlay: stays until the server confirms */}
+      {phase.kind !== "idle" && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="send-overlay-title"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 sm:p-8 shadow-2xl text-center">
+            {phase.kind === "done" ? (
+              <>
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl">
+                  ✅
+                </div>
+                <h3 id="send-overlay-title" className="text-xl font-bold text-gray-900">
+                  Reporte enviado
+                </h3>
+                <p className="mt-2 text-sm text-gray-600">{phase.message}</p>
+                <button
+                  type="button"
+                  autoFocus
+                  onClick={() => {
+                    setPhase({ kind: "idle" });
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="mt-6 w-full rounded-xl bg-green-600 px-6 py-3 font-semibold text-white hover:bg-green-700"
+                >
+                  Aceptar
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="mx-auto mb-4 h-14 w-14 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+                <h3 id="send-overlay-title" className="text-xl font-bold text-gray-900">
+                  {phase.kind === "uploading" ? "Enviando reporte…" : "Guardando evidencias en Drive…"}
+                </h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  {phase.kind === "uploading"
+                    ? totalFiles > 0
+                      ? `Subiendo ${totalFiles} archivo(s).`
+                      : "Enviando tus datos."
+                    : "Ya recibimos tus archivos. Estamos terminando de guardarlos."}
+                </p>
+
+                <div className="mt-5">
+                  <div
+                    className="h-3 w-full overflow-hidden rounded-full bg-gray-200"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={
+                      phase.kind === "uploading" && phase.total > 0
+                        ? Math.round((phase.loaded / phase.total) * 100)
+                        : undefined
+                    }
+                  >
+                    {phase.kind === "uploading" ? (
+                      <div
+                        className="h-full rounded-full bg-blue-600 transition-[width] duration-200"
+                        style={{
+                          width: `${phase.total > 0 ? Math.round((phase.loaded / phase.total) * 100) : 0}%`,
+                        }}
+                      />
+                    ) : (
+                      <div className="h-full w-full animate-pulse rounded-full bg-blue-600" />
+                    )}
+                  </div>
+                  {phase.kind === "uploading" && phase.total > 0 && (
+                    <p className="mt-2 text-sm font-semibold text-gray-800 tabular-nums">
+                      {Math.round((phase.loaded / phase.total) * 100)}% · {formatMB(phase.loaded)} de {formatMB(phase.total)}
+                    </p>
+                  )}
+                </div>
+
+                <p className="mt-5 rounded-lg bg-amber-50 p-3 text-sm font-medium text-amber-800">
+                  ⚠️ No cierres ni recargues esta página hasta que termine.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
