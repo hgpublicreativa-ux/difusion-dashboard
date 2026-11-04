@@ -1,17 +1,6 @@
 import { TEAMS, TeamId } from "@/lib/teams";
 
-const TEAM_CARDS: { team: TeamId; icons: string; description: string }[] = [
-  {
-    team: "TEAM1",
-    icons: "📱 👍",
-    description: "Grupos, mensajes, posts y comentarios en WhatsApp y Facebook.",
-  },
-  {
-    team: "TEAM2",
-    icons: "🎵",
-    description: "Actividad diaria y evidencias de TikTok.",
-  },
-];
+const TEAM_IDS: TeamId[] = ["TEAM1", "TEAM2"];
 
 export default function HomePage() {
   return (
@@ -31,22 +20,16 @@ export default function HomePage() {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          {TEAM_CARDS.map(({ team, icons, description }) => {
+          {TEAM_IDS.map((team) => {
             const t = TEAMS[team];
             return (
               <section
                 key={team}
-                className="bg-white/10 backdrop-blur-md rounded-xl p-5 sm:p-6 border border-white/20 text-left flex flex-col"
+                className="bg-white/10 backdrop-blur-md rounded-xl p-5 sm:p-6 border border-white/20 text-center flex flex-col"
               >
-                <p className="text-xs font-bold tracking-widest text-blue-200 uppercase">
-                  {t.label}
-                </p>
-                <h2 className="mt-1 text-xl sm:text-2xl font-bold text-white">
-                  {icons} {t.tagline}
-                </h2>
-                <p className="mt-2 text-blue-100 text-sm sm:text-base">{description}</p>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white">{t.label}</h2>
 
-                <div className="flex flex-col sm:flex-row gap-3 mt-auto pt-5">
+                <div className="flex flex-col sm:flex-row gap-3 mt-auto pt-6">
                   <a
                     href={t.memberPath}
                     className="flex-1 text-center px-5 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition duration-200 shadow-lg"

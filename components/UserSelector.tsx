@@ -113,7 +113,7 @@ export default function UserSelector({ team = "TEAM1" }: { team?: TeamId }) {
         </div>
         {team !== "TEAM1" && (
           <p className="inline-block mb-3 px-3 py-1 rounded-full bg-pink-100 text-pink-800 text-sm font-semibold">
-            {TEAMS[team].label} · {TEAMS[team].tagline}
+            {TEAMS[team].label}
           </p>
         )}
         <p className="text-gray-600 mb-8">

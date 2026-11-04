@@ -375,10 +375,10 @@ export default function UsersAdmin({ team = "TEAM1" }: { team?: TeamId }) {
                           {formatDateEc(user.createdAt)}
                         </td>
                         <td className="px-3 sm:px-6 py-4">
-                          <div className="flex flex-wrap justify-center gap-2 min-w-[180px]">
+                          <div className="grid grid-cols-2 gap-2 w-[280px] mx-auto">
                             <button
                               onClick={() => openPhoneEditor(user)}
-                              className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors"
+                              className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors whitespace-nowrap"
                             >
                               📱 Cambiar número
                             </button>
@@ -388,19 +388,19 @@ export default function UsersAdmin({ team = "TEAM1" }: { team?: TeamId }) {
                                 setNewPassword("");
                                 setPasswordError("");
                               }}
-                              className="px-3 py-1.5 bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg hover:bg-amber-100 border border-amber-200 transition-colors"
+                              className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg hover:bg-amber-100 border border-amber-200 transition-colors whitespace-nowrap"
                             >
                               🔑 Cambiar clave
                             </button>
                             <button
                               onClick={() => openPhoneHistory(user)}
-                              className="px-3 py-1.5 bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-100 border border-gray-200 transition-colors"
+                              className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-100 border border-gray-200 transition-colors whitespace-nowrap"
                             >
                               🕘 Historial
                             </button>
                             <button
                               onClick={() => setUserToDelete(user)}
-                              className="px-3 py-1.5 bg-red-50 text-red-700 text-xs font-semibold rounded-lg hover:bg-red-100 border border-red-200 transition-colors"
+                              className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-red-50 text-red-700 text-xs font-semibold rounded-lg hover:bg-red-100 border border-red-200 transition-colors whitespace-nowrap"
                             >
                               🗑️ Eliminar
                             </button>
@@ -448,7 +448,7 @@ export default function UsersAdmin({ team = "TEAM1" }: { team?: TeamId }) {
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => openPhoneEditor(user)}
-                        className="px-3 py-2 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-200"
+                        className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors whitespace-nowrap"
                       >
                         📱 Cambiar número
                       </button>
@@ -458,19 +458,19 @@ export default function UsersAdmin({ team = "TEAM1" }: { team?: TeamId }) {
                           setNewPassword("");
                           setPasswordError("");
                         }}
-                        className="px-3 py-2 bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg border border-amber-200"
+                        className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg hover:bg-amber-100 border border-amber-200 transition-colors whitespace-nowrap"
                       >
                         🔑 Cambiar clave
                       </button>
                       <button
                         onClick={() => openPhoneHistory(user)}
-                        className="px-3 py-2 bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg border border-gray-200"
+                        className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-100 border border-gray-200 transition-colors whitespace-nowrap"
                       >
                         🕘 Historial
                       </button>
                       <button
                         onClick={() => setUserToDelete(user)}
-                        className="px-3 py-2 bg-red-50 text-red-700 text-xs font-semibold rounded-lg border border-red-200"
+                        className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-red-50 text-red-700 text-xs font-semibold rounded-lg hover:bg-red-100 border border-red-200 transition-colors whitespace-nowrap"
                       >
                         🗑️ Eliminar
                       </button>
