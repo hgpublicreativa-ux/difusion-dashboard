@@ -1,269 +1,164 @@
 # Difusión Dashboard
 
-Dashboard interno para registro y visualización de métricas de difusión masiva en WhatsApp y Facebook.
+App web interna para registrar y revisar el trabajo diario de difusión de varios equipos. Cada miembro llena un reporte por día con sus números, enlaces y evidencias (capturas o videos), y el coordinador de cada equipo revisa los totales en su propio panel.
 
-## 🚀 Características
+Hoy la app tiene dos equipos, cada uno con su formulario, su panel y su clave de coordinador:
 
-- ✅ Formulario diario para usuarios registren sus métricas
-- ✅ Subida automática de evidencias (screenshots/videos) a Google Drive
-- ✅ Dashboard administrativo con filtros por fecha
-- ✅ Tablas de agregación por usuario y por campaña
-- ✅ Cálculos automáticos de alcance e impactos de WhatsApp
-- ✅ Interfaz diseñada con Tailwind CSS puro (sin librerías de componentes)
+| | Equipo 1 | Equipo 2 |
+|---|---|---|
+| Qué registra | WhatsApp y Facebook | TikTok |
+| Formulario | `/user` | `/equipo-2` |
+| Panel del coordinador | `/admin` | `/equipo-2/admin` |
+| Gestión de usuarios | `/admin/users` | `/equipo-2/admin/users` |
+| Clave del coordinador | `ADMIN_PASSWORD` | `ADMIN_PASSWORD_TEAM2` |
+| Carpeta de evidencias en Drive | `EVIDENCIA_WHATSAPP`, `EVIDENCIA_FACEBOOK` | `EVIDENCIA_TIKTOK` |
 
-## 📋 Requerimientos
+Cada panel muestra **solo** a su equipo. La separación la aplica el servidor: una clave de coordinador nunca puede ver, editar ni borrar datos del otro equipo.
 
-- Node.js 18+
-- PostgreSQL (local o en Railway)
-- Google Cloud Service Account con acceso a Google Drive API
-- npm o yarn
+---
 
-## 🔧 Instalación y Configuración
+## Funciones
 
-### 1. Clonar el repositorio
+### Miembros (formulario)
+- Eligen su nombre (con buscador) y entran con su clave.
+- Llenan un **reporte por día**. Si envían varias veces el mismo día, los números se **suman** y los enlaces y observaciones se agregan.
+- Suben evidencias **sin límite de archivos**. Una pantalla de carga muestra el progreso real (%, MB) y no se cierra hasta que todo queda guardado en Drive.
+- Todas las fechas usan la hora de Ecuador (`America/Guayaquil`).
+
+**Equipo 1:** grupos de WhatsApp a los que se enviaron mensajes, mensajes enviados, personas contactadas por WhatsApp, posts creados en Facebook (con enlaces), comentarios (con enlaces de los posts), grupos donde se compartió, grupos nuevos, personas contactadas por mensaje directo de Facebook.
+
+**Equipo 2:** comentarios realizados en TikTok y enlaces de las publicaciones comentadas. **Publicaciones comentadas** = cantidad de enlaces, se calcula sola.
+
+### Coordinador (panel)
+- Tarjetas de totales, tabla por usuario (total y "hoy"), historial diario por persona, enlaces por fecha y observaciones.
+- **Filtro de fechas** con botones rápidos: Hoy, Últimos 7 días, Últimos 30 días, Este mes y Todo. Al abrir, los totales muestran todo el historial y el historial y los enlaces solo los últimos 7 días, para que cargue rápido.
+- **Editar** cualquier reporte de su equipo y **descargar PDF** del período elegido.
+- **Usuarios:** crear, eliminar, cambiar clave, cambiar teléfono (con historial de números) e **importar una lista** pegada desde Excel (nombre y celular; ignora títulos y dirección, corrige mayúsculas y el 0 inicial del celular, y omite repetidos).
+
+---
+
+## Tecnología
+
+- **Next.js 14** (App Router) + React 18 + TypeScript
+- **Tailwind CSS** (sin librerías de componentes)
+- **PostgreSQL** + **Prisma**
+- **Google Drive API** con OAuth2 (los archivos se suben como una cuenta de Google real)
+- **jsPDF** para los reportes
+- Sesiones con cookie firmada (HMAC) y claves de miembros cifradas con **bcrypt**
+- Publicada en **Railway**: se despliega sola con cada push a `main`, aplica las migraciones al arrancar y se apaga cuando nadie la usa
+
+---
+
+## Estructura
+
+```
+app/
+  page.tsx                    Inicio: una tarjeta por equipo
+  user/                       Formulario Equipo 1
+  admin/                      Panel, login y usuarios Equipo 1
+  equipo-2/                   Formulario Equipo 2
+  equipo-2/admin/             Panel, login y usuarios Equipo 2
+  api/upload/                 Recibe el reporte, sube archivos a Drive y guarda en la BD
+  api/auth/google/            Conecta la cuenta de Google Drive (OAuth)
+components/
+  UserSelector.tsx            Elegir nombre + clave del miembro
+  UserForm.tsx                Formulario diario y pantalla de carga
+  AdminDashboard.tsx          Panel del coordinador
+  UsersAdmin.tsx              Gestión de usuarios
+  ImportUsers.tsx             Importar usuarios desde una lista
+  AdminLogin.tsx, AdminNav.tsx, SiteNav.tsx, LogoutButton.tsx
+lib/
+  teams.ts                    Configuración de cada equipo (rutas, métricas, enlaces, evidencias)
+  actions.ts                  Consultas del servidor, siempre limitadas al equipo del coordinador
+  auth.ts, session.ts         Login de miembros y coordinadores
+  drive.ts                    Carpetas y subida de archivos a Drive
+  importUsers.ts              Limpieza de nombres y celulares para la importación
+  dates.ts, labels.ts, db.ts
+middleware.ts                 Protege el panel de cada equipo con su propia sesión
+prisma/schema.prisma          Modelo de datos (User, ActivityLog, PhoneChange, GoogleAuthToken)
+```
+
+### Agregar o cambiar métricas de un equipo
+Las métricas, los enlaces y las secciones de evidencias de cada equipo están en [`lib/teams.ts`](lib/teams.ts). El panel, la edición, el PDF y la ruta de envío leen esa configuración. Para una métrica nueva:
+1. Agrega la columna en `prisma/schema.prisma` (`Int @default(0)` o `String[] @default([])`) y crea su migración.
+2. Agrega la clave en `ALL_METRIC_KEYS` o `ALL_LINK_KEYS` y en el equipo correspondiente de `TEAMS`.
+3. Agrega el campo en el formulario de ese equipo (`components/UserForm.tsx`).
+
+### Organización en Google Drive
+```
+<carpeta principal>/
+  <Nombre de la persona>/
+    <DD-MM-AAAA>/
+      EVIDENCIA_WHATSAPP/   (Equipo 1)
+      EVIDENCIA_FACEBOOK/   (Equipo 1)
+      EVIDENCIA_TIKTOK/     (Equipo 2)
+```
+Las carpetas se crean con el nombre de la persona, por eso la app no permite dos usuarios con el mismo nombre, aunque sean de equipos distintos.
+
+---
+
+## Variables de entorno
+
+| Variable | Para qué |
+|---|---|
+| `DATABASE_URL` | Conexión a PostgreSQL |
+| `NEXTAUTH_SECRET` | Firma las cookies de sesión (texto largo y aleatorio) |
+| `ADMIN_PASSWORD` | Clave del coordinador del Equipo 1 |
+| `ADMIN_PASSWORD_TEAM2` | Clave del coordinador del Equipo 2 |
+| `GOOGLE_OAUTH_CLIENT_ID` | Cliente OAuth de Google Cloud |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | Secreto del cliente OAuth |
+| `GOOGLE_OAUTH_REDIRECT_URI` | `https://<tu-app>/api/auth/google/callback` |
+| `GOOGLE_DRIVE_FOLDER_ID` | ID de la carpeta principal de Drive (lo que va después de `/folders/` en su URL) |
+
+En Railway se configuran en **servicio → Variables**. En local van en `.env.local`; usa [`.env.example`](.env.example) como plantilla. Nunca subas claves reales a GitHub.
+
+---
+
+## Conectar Google Drive
+
+1. En [Google Cloud Console](https://console.cloud.google.com), crea un proyecto y habilita **Google Drive API**.
+2. En **APIs y servicios → Credenciales**, crea un **ID de cliente OAuth** de tipo "Aplicación web" y agrega como URI de redirección `https://<tu-app>/api/auth/google/callback`.
+3. Copia el ID y el secreto a las variables `GOOGLE_OAUTH_*`.
+4. Abre `https://<tu-app>/api/auth/google` e inicia sesión con la cuenta de Google dueña de la carpeta. La app guarda el permiso y desde entonces sube los archivos sola.
+
+Si la subida falla con "Google Drive not authorized yet", repite el paso 4.
+
+---
+
+## Desarrollo local
+
+Requiere Node.js 18+ y PostgreSQL.
 
 ```bash
-git clone <repo-url>
-cd control-difusion
 npm install
+cp .env.example .env.local   # y completa los valores
+npm run prisma:migrate       # crea las tablas
+npm run dev                  # http://localhost:3000
 ```
 
-### 2. Configurar Variables de Entorno
-
-Crea un archivo `.env.local` en la raíz del proyecto y completa lo siguiente:
-
-```env
-# Database (PostgreSQL)
-DATABASE_URL="postgresql://usuario:contraseña@localhost:5432/difusion_db"
-
-# NextAuth
-NEXTAUTH_SECRET="tu-secreto-aleatorio-aqui"
-NEXTAUTH_URL="http://localhost:3000"
-
-# Google Drive Service Account
-# 1. Ve a Google Cloud Console
-# 2. Crea un nuevo proyecto
-# 3. Habilita Google Drive API
-# 4. Crea una Service Account
-# 5. Descarga las credenciales JSON
-# 6. Llena los valores desde ese JSON:
-
-GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL="tu-service-account@proyecto.iam.gserviceaccount.com"
-GOOGLE_DRIVE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
-GOOGLE_DRIVE_PROJECT_ID="tu-google-cloud-project-id"
-
-# ID de la carpeta principal en Drive donde se guardarán las evidencias
-# Para obtenerlo: abre la carpeta en Google Drive, copia el ID de la URL
-# https://drive.google.com/drive/folders/FOLDER_ID_AQUI
-GOOGLE_DRIVE_FOLDER_ID="tu-folder-id"
-```
-
-### 3. Configurar Base de Datos
+Otros comandos:
 
 ```bash
-# Generar cliente Prisma
-npm run prisma:generate
-
-# Crear/migrar la base de datos
-npm run prisma:migrate
+npm run build          # build de producción (genera Prisma y compila)
+npm run prisma:studio  # ver y editar la base de datos
+npx tsc --noEmit       # revisar tipos
 ```
 
-### 4. Ejecutar en Desarrollo
+---
 
-```bash
-npm run dev
-```
+## Despliegue
 
-La aplicación estará disponible en `http://localhost:3000`
+Cada push a `main` en GitHub despliega automáticamente en Railway. Antes de arrancar, Railway corre `prisma migrate deploy`, así que las migraciones nuevas se aplican solas.
 
-## 📁 Estructura del Proyecto
+Las migraciones se escriben para **no borrar datos**: solo agregan columnas o tablas, o relajan restricciones.
 
-```
-.
-├── app/                    # Next.js App Router
-│   ├── api/
-│   │   └── upload/        # Route Handler para subir archivos a Drive
-│   ├── admin/             # Páginas del administrador
-│   ├── user/              # Páginas del usuario
-│   ├── globals.css        # Estilos globales Tailwind
-│   └── layout.tsx         # Layout raíz
-├── components/            # Componentes React
-│   ├── UserForm.tsx       # Formulario diario del usuario
-│   └── AdminDashboard.tsx # Dashboard administrativo
-├── lib/                   # Utilidades y librerías
-│   ├── actions.ts         # Server Actions (consultas a BD)
-│   ├── db.ts              # Cliente Prisma
-│   └── drive.ts           # Integración Google Drive
-├── prisma/
-│   └── schema.prisma      # Esquema de base de datos
-└── package.json
-```
+---
 
-## 🗄️ Esquema de Base de Datos
+## Pendiente
 
-### Modelo: User
-```
-- id (String, PK)
-- name (String)
-- email (String, unique)
-- password (String, hashed)
-- role (ADMIN | USER)
-- createdAt (DateTime)
-- updatedAt (DateTime)
-```
+- **Envío de accesos por correo** (Equipo 2): cargar los correos de los miembros y enviar a cada uno su usuario, una clave generada y el enlace de acceso, desde una cuenta de Gmail (`GMAIL_USER`, `GMAIL_APP_PASSWORD`, `APP_URL`).
+- **Súper administrador** que vea los dos equipos juntos.
 
-### Modelo: ActivityLog
-```
-- id (String, PK)
-- userId (String, FK)
-- date (DateTime, default: now)
-- campaignName (String)
-- whatsappGroupsReached (Int)
-- whatsappMessagesPerGroup (Int)
-- fbOwnPostsCreated (Int)
-- fbOwnPostsLinks (String[])
-- fbCommentsMade (Int)
-- fbGroupsShared (Int)
-- fbNewGroupsJoined (Int)
-- driveEvidenceFolderUrl (String)
-```
+---
 
-## 📊 Cálculos Implementados
-
-### Alcance Estimado (WhatsApp)
-```
-Alcance = whatsappGroupsReached × AVERAGE_PEOPLE_PER_GROUP (150)
-```
-
-### Impactos Totales (WhatsApp)
-```
-Impactos = Alcance × whatsappMessagesPerGroup
-```
-
-## 🌐 Endpoints de API
-
-### POST /api/upload
-Sube evidencias a Google Drive y registra la actividad
-
-**Body:**
-```json
-{
-  "userId": "user-id",
-  "userName": "Nombre del Usuario",
-  "campaignName": "Nombre de Campaña",
-  "date": "2024-10-24",
-  "whatsappGroupsReached": 150,
-  "whatsappMessagesPerGroup": 5,
-  "fbOwnPostsCreated": 3,
-  "fbOwnPostsLinks": ["https://..."],
-  "fbCommentsMade": 10,
-  "fbGroupsShared": 20,
-  "fbNewGroupsJoined": 5,
-  "files": [File, File, ...]
-}
-```
-
-## 🚀 Despliegue en Railway
-
-### 1. Preparar el Proyecto
-
-```bash
-# Crear archivo .env.production con variables de producción
-# Asegúrate de que no incluya secretos sensibles (usa Railway's environment variables)
-```
-
-### 2. Conectar a Railway
-
-```bash
-# Instalar Railway CLI (si no lo tienes)
-npm i -g @railway/cli
-
-# Autenticarte
-railway login
-
-# Crear nuevo proyecto
-railway init
-
-# Desplegar
-railway up
-```
-
-### 3. Configurar Variables en Railway
-
-En el dashboard de Railway:
-1. Ve a tu proyecto
-2. Abre "Environment"
-3. Añade todas las variables de `.env.local`
-4. Railway crearán automáticamente PostgreSQL si lo conectas
-
-### 4. Ejecutar Migraciones
-
-```bash
-railway run npm run prisma:migrate
-```
-
-## 🔒 Seguridad
-
-- Las contraseñas se hashean con bcrypt
-- Las variables sensibles deben estar en `.env.local` (gitignored)
-- Google Drive API usa Service Account (no OAuth interactivo)
-- Los archivos se suben directamente desde el servidor (no expone credenciales al cliente)
-
-## 📝 Uso de la Aplicación
-
-### Para Usuarios
-1. Accede a `/user`
-2. Completa el formulario diario con:
-   - Nombre de la campaña
-   - Métricas de WhatsApp y Facebook
-   - Sube capturas/videos de evidencia
-3. Haz click en "Submit" - los archivos se suben a Google Drive automáticamente
-
-### Para Administradores
-1. Accede a `/admin/users` para crear nuevos usuarios
-2. Ve a `/admin` para ver el dashboard
-3. Usa los filtros de fecha para analizar períodos específicos
-4. Las tablas muestran agregados por usuario y por campaña
-
-## 🛠️ Desarrollo
-
-```bash
-# Ver base de datos con Prisma Studio
-npm run prisma:studio
-
-# Generar cliente Prisma después de cambios en schema
-npm run prisma:generate
-
-# Crear nueva migración
-npm run prisma:migrate
-```
-
-## 🐛 Troubleshooting
-
-### "Failed to connect to database"
-- Verifica que PostgreSQL esté corriendo
-- Comprueba la `DATABASE_URL` en `.env.local`
-
-### "Failed to upload file to Drive"
-- Verifica que el `GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL` sea correcto
-- Asegúrate de que la Service Account tiene permiso de escritura en Google Drive
-- Comprueba que la `GOOGLE_DRIVE_PRIVATE_KEY` está bien formateada
-
-### Los campos de número no se guardan
-- Asegúrate de enviar valores numéricos válidos (>= 0)
-- Revisa la consola del servidor para mensajes de error
-
-## 📚 Referencias
-
-- [Next.js App Router](https://nextjs.org/docs/app)
-- [Prisma ORM](https://www.prisma.io/docs)
-- [Google Drive API](https://developers.google.com/drive/api/v3/quickstart)
-- [Tailwind CSS](https://tailwindcss.com)
-
-## 📄 Licencia
-
-Proyecto interno - Uso restringido
-
-## 👨‍💻 Soporte
-
-Para preguntas o problemas, contacta al equipo de desarrollo.
+Proyecto interno, uso restringido.
