@@ -149,10 +149,10 @@ export const TEAMS: Record<TeamId, TeamConfig> = {
     ],
     metrics: [
       { key: "tiktokCommentsMade", label: "Cantidad de comentarios realizados en TikTok", cardLabel: "Total de comentarios realizados en TikTok", unit: "comentarios de TikTok", icon: "💬", color: "pink", highlight: true },
-      { key: "tiktokAccountsCommented", label: "Cuentas comentadas", cardLabel: "Total de cuentas comentadas", unit: "cuentas de TikTok (enlaces registrados)", icon: "👤", color: "purple", derivedFromLinks: "tiktokCommentLinks" },
+      { key: "tiktokAccountsCommented", label: "Publicaciones comentadas", cardLabel: "Total de publicaciones comentadas", unit: "publicaciones de TikTok (enlaces registrados)", icon: "👤", color: "purple", derivedFromLinks: "tiktokCommentLinks" },
     ],
     linkLists: [
-      { key: "tiktokCommentLinks", title: "Enlaces de las publicaciones en las que se comentó", icon: "🎵", summaryLabel: "cuenta(s) comentada(s)", pdfLabel: "Publicación comentada", placeholder: "https://www.tiktok.com/@cuenta/video/...", badgeClass: "bg-pink-100 text-pink-800", countMetric: "tiktokCommentsMade" },
+      { key: "tiktokCommentLinks", title: "Enlaces de las publicaciones en las que se comentó", icon: "🎵", summaryLabel: "publicación(es) comentada(s)", pdfLabel: "Publicación comentada", placeholder: "https://www.tiktok.com/@cuenta/video/...", badgeClass: "bg-pink-100 text-pink-800", countMetric: "tiktokCommentsMade" },
     ],
     linksTitle: "Enlaces de TikTok",
   },

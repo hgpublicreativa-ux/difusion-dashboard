@@ -538,7 +538,7 @@ export default function UserForm({ userName, userId, team = "TEAM1" }: UserFormP
                   Enlaces de las publicaciones en las que comentaste
                 </label>
                 <p className="text-xs text-pink-800 mb-2">
-                  Cada enlace cuenta como una cuenta comentada.
+                  Cada enlace cuenta como una publicación comentada.
                 </p>
                 {formData.tiktokCommentLinks.map((link, index) => (
                   <div key={index} className="flex gap-2 mb-2">
@@ -570,7 +570,7 @@ export default function UserForm({ userName, userId, team = "TEAM1" }: UserFormP
                     + Agregar enlace
                   </button>
                   <p className="text-sm font-semibold text-pink-900">
-                    Cuentas comentadas: {formData.tiktokCommentLinks.filter((l) => l.trim()).length}
+                    Publicaciones comentadas: {formData.tiktokCommentLinks.filter((l) => l.trim()).length}
                   </p>
                 </div>
               </div>

@@ -235,7 +235,7 @@ export async function updateActivityLog(
       }
     }
 
-    // Derived metrics (e.g. cuentas comentadas) follow their link count
+    // Derived metrics (e.g. publicaciones comentadas) follow their link count
     for (const metric of config.metrics) {
       if (metric.derivedFromLinks) {
         update[metric.key] =

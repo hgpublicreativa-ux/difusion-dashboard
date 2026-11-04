@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     const metrics: Partial<Record<MetricKey, number>> = {};
     for (const metric of teamConfig.metrics) {
       if (metric.derivedFromLinks) {
-        // e.g. "cuentas comentadas" = number of links sent
+        // e.g. "publicaciones comentadas" = number of links sent
         metrics[metric.key] = links[metric.derivedFromLinks]?.length ?? 0;
       } else {
         const value = parseInt((formData.get(metric.key) as string) || "0");
