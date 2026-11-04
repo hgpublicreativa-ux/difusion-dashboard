@@ -16,6 +16,7 @@ model User {
   email         String   @unique
   password      String
   role          Role     @default(USER)
+  team          Team     @default(TEAM1)
   driveFolderUrl String?
   phone          String?
 
@@ -24,11 +25,20 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([team])
 }
 
 enum Role {
   ADMIN
   USER
+}
+
+// Each member belongs to exactly one team; each team has its own form,
+// dashboard and admin password
+enum Team {
+  TEAM1
+  TEAM2
 }
 
 model GoogleAuthToken {

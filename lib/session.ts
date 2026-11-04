@@ -4,9 +4,18 @@
 export const SESSION_COOKIE = "difusion_session";
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
+import type { TeamId } from "./teams";
+
+// Admin sessions carry the team they manage. Sessions issued before teams
+// existed have no team and are treated as TEAM1.
 export type Session =
-  | { role: "ADMIN"; exp: number }
+  | { role: "ADMIN"; team?: TeamId; exp: number }
   | { role: "USER"; userId: string; exp: number };
+
+export function adminTeam(session: Session | null): TeamId | null {
+  if (session?.role !== "ADMIN") return null;
+  return session.team ?? "TEAM1";
+}
 
 const encoder = new TextEncoder();
 
@@ -40,7 +49,7 @@ async function hmac(data: string) {
 }
 
 export async function signSession(
-  data: { role: "ADMIN" } | { role: "USER"; userId: string }
+  data: { role: "ADMIN"; team: TeamId } | { role: "USER"; userId: string }
 ) {
   const payload: Session = {
     ...data,

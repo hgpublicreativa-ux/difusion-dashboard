@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { getUserDirectory } from "@/lib/actions";
 import { getCurrentUser, loginUser, logout } from "@/lib/auth";
 import UserForm from "@/components/UserForm";
+import { TEAMS, TeamId } from "@/lib/teams";
 
 type Member = { id: string; name: string };
 
-export default function UserSelector() {
+export default function UserSelector({ team = "TEAM1" }: { team?: TeamId }) {
   const [users, setUsers] = useState<Member[]>([]);
   const [loggedUser, setLoggedUser] = useState<Member | null>(null);
   const [pendingUser, setPendingUser] = useState<Member | null>(null);
@@ -27,13 +28,13 @@ export default function UserSelector() {
     setError("");
     try {
       // Resume an existing session if the member already logged in
-      const current = await getCurrentUser();
+      const current = await getCurrentUser(team);
       if (current) {
         setLoggedUser(current);
         return;
       }
 
-      const result = await getUserDirectory();
+      const result = await getUserDirectory(team);
       if (result.success) {
         setUsers(result.data as Member[]);
       } else {
@@ -53,7 +54,7 @@ export default function UserSelector() {
     setIsLoggingIn(true);
     setLoginError("");
     try {
-      const result = await loginUser(pendingUser.id, password);
+      const result = await loginUser(pendingUser.id, password, team);
       if (result.success && result.user) {
         setLoggedUser(result.user);
         setPendingUser(null);
@@ -94,7 +95,7 @@ export default function UserSelector() {
             ← Cerrar sesión
           </button>
         </div>
-        <UserForm userId={loggedUser.id} userName={loggedUser.name} />
+        <UserForm userId={loggedUser.id} userName={loggedUser.name} team={team} />
       </div>
     );
   }
@@ -110,6 +111,11 @@ export default function UserSelector() {
             ¿Quién eres?
           </h2>
         </div>
+        {team !== "TEAM1" && (
+          <p className="inline-block mb-3 px-3 py-1 rounded-full bg-pink-100 text-pink-800 text-sm font-semibold">
+            {TEAMS[team].label} · {TEAMS[team].tagline}
+          </p>
+        )}
         <p className="text-gray-600 mb-8">
           Selecciona tu nombre e ingresa tu clave para registrar tu actividad diaria.
         </p>

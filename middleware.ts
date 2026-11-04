@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE, verifySession } from "@/lib/session";
+import { SESSION_COOKIE, adminTeam, verifySession } from "@/lib/session";
+import { TEAMS, TeamId } from "@/lib/teams";
 
-// Every /admin page (except the login screen) requires an admin session
+// Each team's admin pages require an admin session for that same team
 export async function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname === "/admin/login") return NextResponse.next();
+  const { pathname } = request.nextUrl;
+  const team: TeamId = pathname.startsWith("/equipo-2/") ? "TEAM2" : "TEAM1";
+  const loginPath = TEAMS[team].adminLoginPath;
+
+  if (pathname === loginPath) return NextResponse.next();
 
   const session = await verifySession(request.cookies.get(SESSION_COOKIE)?.value);
-  if (session?.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
+  if (adminTeam(session) !== team) {
+    return NextResponse.redirect(new URL(loginPath, request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/equipo-2/admin/:path*"],
 };

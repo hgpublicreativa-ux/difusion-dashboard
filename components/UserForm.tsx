@@ -3,10 +3,12 @@
 import { METRIC_LABELS, COMMENT_LINKS_LABEL } from "@/lib/labels";
 import { FormEvent, useEffect, useState } from "react";
 import { ecuadorToday } from "@/lib/dates";
+import { TEAMS, TeamId } from "@/lib/teams";
 
 interface UserFormProps {
   userName: string;
   userId: string;
+  team?: TeamId;
 }
 
 const CAMPAIGN_NAME = "Difusión General";
@@ -56,8 +58,11 @@ function sendWithProgress(
   });
 }
 
-export default function UserForm({ userName, userId }: UserFormProps) {
+export default function UserForm({ userName, userId, team = "TEAM1" }: UserFormProps) {
+  const evidenceSections = TEAMS[team].evidence;
   const [isLoading, setIsLoading] = useState(false);
+  // Selected files per evidence section, keyed by the section's field name
+  const [evidenceFiles, setEvidenceFiles] = useState<Record<string, File[]>>({});
   const [phase, setPhase] = useState<SendPhase>({ kind: "idle" });
   // Bumped after a successful send to clear the native file inputs
   const [fileInputsKey, setFileInputsKey] = useState(0);
@@ -73,8 +78,6 @@ export default function UserForm({ userName, userId }: UserFormProps) {
     fbGroupsShared: "",
     fbNewGroupsJoined: "",
     fbPeopleMessaged: "",
-    whatsappFiles: [] as File[],
-    facebookFiles: [] as File[],
     observations: "",
   });
 
@@ -98,10 +101,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
     if (type === "file") {
       const files = (e.target as HTMLInputElement).files;
       if (files) {
-        setFormData((prev) => ({
-          ...prev,
-          [name]: Array.from(files),
-        }));
+        setEvidenceFiles((prev) => ({ ...prev, [name]: Array.from(files) }));
       }
     } else {
       setFormData((prev) => ({
@@ -216,14 +216,11 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         }
       });
 
-      // Add WhatsApp files
-      formData.whatsappFiles.forEach((file) => {
-        form.append("whatsappFiles", file);
-      });
-
-      // Add Facebook files
-      formData.facebookFiles.forEach((file) => {
-        form.append("facebookFiles", file);
+      // Add each evidence section's files under its own field name
+      evidenceSections.forEach((section) => {
+        (evidenceFiles[section.field] || []).forEach((file) => {
+          form.append(section.field, file);
+        });
       });
 
       setPhase({ kind: "uploading", loaded: 0, total: 0 });
@@ -241,6 +238,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
       setSuccess(message);
       setPhase({ kind: "done", message });
       setFileInputsKey((k) => k + 1);
+      setEvidenceFiles({});
 
       // Reset form
       setFormData({
@@ -255,8 +253,6 @@ export default function UserForm({ userName, userId }: UserFormProps) {
         fbGroupsShared: "",
         fbNewGroupsJoined: "",
         fbPeopleMessaged: "",
-        whatsappFiles: [],
-        facebookFiles: [],
         observations: "",
       });
     } catch (err) {
@@ -268,7 +264,7 @@ export default function UserForm({ userName, userId }: UserFormProps) {
     }
   };
 
-  const totalFiles = formData.whatsappFiles.length + formData.facebookFiles.length;
+  const totalFiles = Object.values(evidenceFiles).reduce((n, f) => n + f.length, 0);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -524,53 +520,41 @@ export default function UserForm({ userName, userId }: UserFormProps) {
           </div>
         </div>
 
-        {/* File Upload - WhatsApp */}
-        <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-6 border-2 border-dashed border-green-300 hover:border-green-500 transition-colors">
-          <label className="block text-sm font-semibold text-green-900 mb-3 flex items-center gap-2">
-            <span>💬</span> Evidencias WhatsApp (Capturas/Videos)
-          </label>
-          <input
-            type="file"
-            key={`wa-${fileInputsKey}`}
-            name="whatsappFiles"
-            multiple
-            onChange={handleInputChange}
-            accept="image/*,video/*"
-            className="w-full cursor-pointer"
-          />
-          <p className="mt-2 text-xs text-green-800">
-            Puedes seleccionar varios archivos a la vez.
-          </p>
-          {formData.whatsappFiles.length > 0 && (
-            <div className="mt-3 p-3 bg-green-100 rounded-lg text-sm text-green-900 font-medium">
-              ✓ {formData.whatsappFiles.length} archivo(s) de WhatsApp seleccionado(s)
+        {/* Evidence uploads: one box per section of this team */}
+        {evidenceSections.map((section) => {
+          const count = (evidenceFiles[section.field] || []).length;
+          return (
+            <div
+              key={section.field}
+              className={`${section.boxClass} rounded-xl p-6 border-2 border-dashed transition-colors`}
+            >
+              <label
+                htmlFor={`evidence-${section.field}`}
+                className={`block text-sm font-semibold ${section.labelClass} mb-3 flex items-center gap-2`}
+              >
+                <span>{section.icon}</span> {section.label}
+              </label>
+              <input
+                id={`evidence-${section.field}`}
+                type="file"
+                key={`${section.field}-${fileInputsKey}`}
+                name={section.field}
+                multiple
+                onChange={handleInputChange}
+                accept="image/*,video/*"
+                className="w-full cursor-pointer"
+              />
+              <p className={`mt-2 text-xs ${section.hintClass}`}>
+                Puedes seleccionar varios archivos a la vez.
+              </p>
+              {count > 0 && (
+                <div className={`mt-3 p-3 ${section.badgeClass} rounded-lg text-sm font-medium`}>
+                  ✓ {count} archivo(s) seleccionado(s)
+                </div>
+              )}
             </div>
-          )}
-        </div>
-
-        {/* File Upload - Facebook */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-dashed border-blue-300 hover:border-blue-500 transition-colors">
-          <label className="block text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
-            <span>👍</span> Evidencias Facebook (Capturas/Videos)
-          </label>
-          <input
-            type="file"
-            key={`fb-${fileInputsKey}`}
-            name="facebookFiles"
-            multiple
-            onChange={handleInputChange}
-            accept="image/*,video/*"
-            className="w-full cursor-pointer"
-          />
-          <p className="mt-2 text-xs text-blue-800">
-            Puedes seleccionar varios archivos a la vez.
-          </p>
-          {formData.facebookFiles.length > 0 && (
-            <div className="mt-3 p-3 bg-blue-100 rounded-lg text-sm text-blue-900 font-medium">
-              ✓ {formData.facebookFiles.length} archivo(s) de Facebook seleccionado(s)
-            </div>
-          )}
-        </div>
+          );
+        })}
 
         {/* Observations */}
         <div className="space-y-2">

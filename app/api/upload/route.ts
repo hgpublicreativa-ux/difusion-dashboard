@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createUserFolderStructure, uploadFileToFolder } from "@/lib/drive";
 import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, verifySession } from "@/lib/session";
+import { TEAMS } from "@/lib/teams";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,6 +28,16 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    // The member's team decides which evidence sections exist
+    const member = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { team: true },
+    });
+    if (!member) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+    }
+    const evidenceSections = TEAMS[member.team].evidence;
 
     // Parse form fields for metrics
     const whatsappGroupsReached = parseInt(
@@ -67,38 +78,33 @@ export async function POST(request: NextRequest) {
     const newObservations = ((formData.get("observations") as string) || "").trim();
 
     // Create folder structure in Drive
-    const { drive, folderUrl, userFolderUrl, whatsappFolderId, facebookFolderId } =
-      await createUserFolderStructure(userName, date);
+    const { drive, folderUrl, userFolderUrl, evidenceFolderIds } =
+      await createUserFolderStructure(
+        userName,
+        date,
+        evidenceSections.map((s) => s.driveFolder)
+      );
 
-    // Get all files from the form
-    const files = formData.getAll("files") as File[];
-    const whatsappFiles = formData.getAll("whatsappFiles") as File[];
-    const facebookFiles = formData.getAll("facebookFiles") as File[];
-
-    // Upload files to respective folders
+    // Upload each section's files to its own evidence folder
     let uploadedCount = 0;
-
-    // Upload WhatsApp files
-    for (const file of whatsappFiles) {
-      if (file.size > 0) {
-        await uploadFileToFolder(drive, whatsappFolderId, file);
-        uploadedCount++;
+    for (const section of evidenceSections) {
+      const sectionFiles = formData.getAll(section.field) as File[];
+      for (const file of sectionFiles) {
+        if (file.size > 0) {
+          await uploadFileToFolder(drive, evidenceFolderIds[section.driveFolder], file);
+          uploadedCount++;
+        }
       }
     }
 
-    // Upload Facebook files
-    for (const file of facebookFiles) {
+    // Generic "files" field (backward compatibility): first section's folder
+    for (const file of formData.getAll("files") as File[]) {
       if (file.size > 0) {
-        await uploadFileToFolder(drive, facebookFolderId, file);
-        uploadedCount++;
-      }
-    }
-
-    // Upload generic files (for backward compatibility)
-    for (const file of files) {
-      if (file.size > 0 && !whatsappFiles.includes(file) && !facebookFiles.includes(file)) {
-        // Determine folder based on file name or upload to whatsapp by default
-        await uploadFileToFolder(drive, whatsappFolderId, file);
+        await uploadFileToFolder(
+          drive,
+          evidenceFolderIds[evidenceSections[0].driveFolder],
+          file
+        );
         uploadedCount++;
       }
     }

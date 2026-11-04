@@ -12,6 +12,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { METRIC_LABELS, COMMENT_LINKS_LABEL } from "@/lib/labels";
 import { formatDay, formatDateTimeEc, ecuadorToday } from "@/lib/dates";
+import { TEAMS, TeamId } from "@/lib/teams";
 
 interface UserTotals {
   whatsappGroupsReached: number;
@@ -103,7 +104,8 @@ function formatDateEs(isoDate: string): string {
   return `${day}/${month}/${year}`;
 }
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ team = "TEAM1" }: { team?: TeamId }) {
+  const teamLabel = team === "TEAM1" ? "" : ` - ${TEAMS[team].label}`;
   const [userAggregates, setUserAggregates] = useState<AggregatedUser[]>([]);
   const [facebookLinks, setFacebookLinks] = useState<FacebookLink[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
@@ -369,7 +371,7 @@ export default function AdminDashboard() {
 
     doc.setFontSize(18);
     doc.setTextColor(37, 99, 235);
-    doc.text("Difusión Dashboard - Reporte", 14, 18);
+    doc.text(`Difusión Dashboard${teamLabel} - Reporte`, 14, 18);
 
     doc.setFontSize(11);
     doc.setTextColor(80, 80, 80);
@@ -479,7 +481,7 @@ export default function AdminDashboard() {
         ? `${applied.start || "inicio"}_a_${applied.end || "hoy"}`
         : "historico";
 
-    doc.save(`difusion-dashboard-${fileDateLabel}.pdf`);
+    doc.save(`difusion-dashboard${team === "TEAM1" ? "" : "-equipo-2"}-${fileDateLabel}.pdf`);
   };
 
   return (
@@ -489,7 +491,7 @@ export default function AdminDashboard() {
           <span className="text-2xl">📊</span>
         </div>
         <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Dashboard Administrativo
+          Dashboard Administrativo{teamLabel}
         </h1>
       </div>
 

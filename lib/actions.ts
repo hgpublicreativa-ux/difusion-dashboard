@@ -5,6 +5,7 @@ import { hash } from "bcryptjs";
 import { Role } from "@prisma/client";
 import { requireAdmin } from "./auth";
 import { ecuadorTodayRange } from "./dates";
+import { TeamId, isTeamId } from "./teams";
 
 export async function createUser(
   name: string,
@@ -14,7 +15,7 @@ export async function createUser(
   phone?: string
 ) {
   try {
-    await requireAdmin();
+    const team = await requireAdmin();
     const hashedPassword = await hash(password, 10);
     const cleanPhone = phone?.trim() || null;
 
@@ -24,6 +25,7 @@ export async function createUser(
         email,
         password: hashedPassword,
         role,
+        team,
         phone: cleanPhone,
         // Record the initial assignment so the history starts at creation
         ...(cleanPhone && {
@@ -44,9 +46,10 @@ export async function getActivityLogsByDateRange(
   endDate?: Date
 ) {
   try {
-    await requireAdmin();
+    const team = await requireAdmin();
     const logs = await prisma.activityLog.findMany({
       where: {
+        user: { team },
         date: {
           ...(startDate && { gte: startDate }),
           ...(endDate && { lte: endDate }),
@@ -72,10 +75,11 @@ export async function getAggregatedByUser(
   endDate?: Date
 ) {
   try {
-    await requireAdmin();
+    const team = await requireAdmin();
     const aggregated = await prisma.activityLog.groupBy({
       by: ["userId"],
       where: {
+        user: { team },
         date: {
           ...(startDate && { gte: startDate }),
           ...(endDate && { lte: endDate }),
@@ -99,6 +103,7 @@ export async function getAggregatedByUser(
     const todayAggregated = await prisma.activityLog.groupBy({
       by: ["userId"],
       where: {
+        user: { team },
         date: { gte: todayStart, lte: todayEnd },
       },
       _sum: {
@@ -179,10 +184,11 @@ export async function getObservationsByUser(
   endDate?: Date
 ) {
   try {
-    await requireAdmin();
+    const team = await requireAdmin();
     const logs = await prisma.activityLog.findMany({
       where: {
         userId,
+        user: { team },
         observations: { not: null },
         date: {
           ...(startDate && { gte: startDate }),
@@ -217,6 +223,15 @@ export async function updateActivityLog(
   }
 ) {
   try {
+    const team = await requireAdmin();
+    const log = await prisma.activityLog.findFirst({
+      where: { id, user: { team } },
+      select: { id: true },
+    });
+    if (!log) {
+      return { success: false, error: "Registro no encontrado" };
+    }
+
     const { newPostLinks, newCommentLinks, ...rest } = data;
     const cleanLinks = (newPostLinks || []).filter((l) => l.trim() !== "");
     const cleanCommentLinks = (newCommentLinks || []).filter((l) => l.trim() !== "");
@@ -246,9 +261,10 @@ export async function getFacebookLinksByDateRange(
   endDate?: Date
 ) {
   try {
-    await requireAdmin();
+    const team = await requireAdmin();
     const logs = await prisma.activityLog.findMany({
       where: {
+        user: { team },
         date: {
           ...(startDate && { gte: startDate }),
           ...(endDate && { lte: endDate }),
@@ -292,9 +308,9 @@ export async function getFacebookLinksByDateRange(
 
 export async function getUserForActivityLog(userId: string) {
   try {
-    await requireAdmin();
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    const team = await requireAdmin();
+    const user = await prisma.user.findFirst({
+      where: { id: userId, team },
     });
 
     return { success: true, data: user };
@@ -306,8 +322,9 @@ export async function getUserForActivityLog(userId: string) {
 
 export async function getAllUsers() {
   try {
-    await requireAdmin();
+    const team = await requireAdmin();
     const users = await prisma.user.findMany({
+      where: { team },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -330,10 +347,13 @@ export async function getAllUsers() {
 
 export async function deleteUser(userId: string) {
   try {
-    await requireAdmin();
-    await prisma.user.delete({
-      where: { id: userId },
+    const team = await requireAdmin();
+    const { count } = await prisma.user.deleteMany({
+      where: { id: userId, team },
     });
+    if (count === 0) {
+      return { success: false, error: "Usuario no encontrado" };
+    }
 
     return { success: true };
   } catch (error) {
@@ -344,13 +364,13 @@ export async function deleteUser(userId: string) {
 
 export async function updateUserPhone(userId: string, newPhone: string) {
   try {
-    await requireAdmin();
+    const team = await requireAdmin();
     const cleanPhone = newPhone.trim();
     if (!cleanPhone) {
       return { success: false, error: "El número no puede estar vacío" };
     }
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findFirst({ where: { id: userId, team } });
     if (!user) {
       return { success: false, error: "Usuario no encontrado" };
     }
@@ -377,9 +397,9 @@ export async function updateUserPhone(userId: string, newPhone: string) {
 
 export async function getPhoneHistory(userId: string) {
   try {
-    await requireAdmin();
+    const team = await requireAdmin();
     const history = await prisma.phoneChange.findMany({
-      where: { userId },
+      where: { userId, user: { team } },
       orderBy: { changedAt: "desc" },
     });
 
@@ -391,10 +411,11 @@ export async function getPhoneHistory(userId: string) {
 }
 
 // Public list shown on the member login screen: only id and name
-export async function getUserDirectory() {
+export async function getUserDirectory(team: TeamId = "TEAM1") {
   try {
+    if (!isTeamId(team)) return { success: false, error: "Equipo no válido" };
     const users = await prisma.user.findMany({
-      where: { role: "USER" },
+      where: { role: "USER", team },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     });

@@ -1,11 +1,15 @@
-const links = [
-  { href: "/", icon: "🏠", label: "Inicio" },
-  { href: "/user", icon: "📝", label: "Registrar Actividad" },
-  { href: "/admin", icon: "📊", label: "Panel Admin" },
-];
+import { TEAMS, TeamId } from "@/lib/teams";
 
 // Top menu for the public/member pages (the admin pages use AdminNav)
-export default function SiteNav({ active }: { active?: string }) {
+export default function SiteNav({ active, team = "TEAM1" }: { active?: string; team?: TeamId }) {
+  const t = TEAMS[team];
+  const suffix = team === "TEAM1" ? "" : ` · ${t.label}`;
+  const links = [
+    { href: "/", icon: "🏠", label: "Inicio" },
+    { href: t.memberPath, icon: "📝", label: `Registrar Actividad${suffix}` },
+    { href: t.adminPath, icon: "📊", label: `Panel Admin${suffix}` },
+  ];
+
   return (
     <nav className="bg-white shadow-md border-b border-gray-200 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">

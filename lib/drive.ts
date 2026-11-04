@@ -115,15 +115,17 @@ function formatDateForFolder(isoDate: string): string {
   return `${day}-${month}-${year}`;
 }
 
+// Builds <main folder>/<user name>/<DD-MM-YYYY>/<one folder per evidence
+// section> and returns the id of each evidence folder by its name
 export async function createUserFolderStructure(
   userName: string,
-  date: string
+  date: string,
+  evidenceFolderNames: string[]
 ): Promise<{
   drive: drive_v3.Drive;
   folderUrl: string;
   userFolderUrl: string;
-  whatsappFolderId: string;
-  facebookFolderId: string;
+  evidenceFolderIds: Record<string, string>;
 }> {
   try {
     const mainFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
@@ -140,16 +142,16 @@ export async function createUserFolderStructure(
     const folderDateName = formatDateForFolder(date);
     const dateFolderId = await findOrCreateFolder(drive, userFolderId, folderDateName);
 
-    // Create or get WhatsApp evidence folder
-    const whatsappFolderId = await findOrCreateFolder(drive, dateFolderId, "EVIDENCIA_WHATSAPP");
-
-    // Create or get Facebook evidence folder
-    const facebookFolderId = await findOrCreateFolder(drive, dateFolderId, "EVIDENCIA_FACEBOOK");
+    // Create or get one evidence folder per section (e.g. EVIDENCIA_WHATSAPP)
+    const evidenceFolderIds: Record<string, string> = {};
+    for (const name of evidenceFolderNames) {
+      evidenceFolderIds[name] = await findOrCreateFolder(drive, dateFolderId, name);
+    }
 
     const folderUrl = await getFolderLink(dateFolderId);
     const userFolderUrl = await getFolderLink(userFolderId);
 
-    return { drive, folderUrl, userFolderUrl, whatsappFolderId, facebookFolderId };
+    return { drive, folderUrl, userFolderUrl, evidenceFolderIds };
   } catch (error) {
     console.error("Error creating user folder structure:", error);
     throw error;

@@ -1,12 +1,14 @@
 import LogoutButton from "@/components/LogoutButton";
+import { TEAMS, TeamId } from "@/lib/teams";
 
-const links = [
-  { href: "/", icon: "🏠", label: "Inicio" },
-  { href: "/admin", icon: "📊", label: "Dashboard" },
-  { href: "/admin/users", icon: "👥", label: "Usuarios" },
-];
+export default function AdminNav({ team = "TEAM1" }: { team?: TeamId }) {
+  const t = TEAMS[team];
+  const links = [
+    { href: "/", icon: "🏠", label: "Inicio" },
+    { href: t.adminPath, icon: "📊", label: "Dashboard" },
+    { href: t.adminUsersPath, icon: "👥", label: "Usuarios" },
+  ];
 
-export default function AdminNav() {
   return (
     <nav className="bg-white shadow-md border-b border-gray-200 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
@@ -18,6 +20,11 @@ export default function AdminNav() {
             <h1 className="hidden sm:block text-xl lg:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent truncate">
               Difusión Dashboard
             </h1>
+            {team !== "TEAM1" && (
+              <span className="px-2.5 py-1 rounded-full bg-pink-100 text-pink-800 text-xs sm:text-sm font-semibold whitespace-nowrap">
+                {t.label}
+              </span>
+            )}
           </div>
           <div className="flex gap-0.5 sm:gap-1 items-center">
             {links.map((l) => (
